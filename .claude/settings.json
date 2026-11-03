@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *.env|*.env.local|*.env.*) [ \"${f##*/}\" = \".env.example\" ] || { echo \"blocked: real env file. Use .env.example.\" >&2; exit 2; };; esac"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *.ts|*.tsx|*.css|*.mjs|*.json) npx prettier --write \"$f\" >/dev/null;; esac 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  }
+}
