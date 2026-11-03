@@ -1,0 +1,4 @@
+tools/oxlint/anti-slop/
+supabase/
+package-lock.json
+.expo/
