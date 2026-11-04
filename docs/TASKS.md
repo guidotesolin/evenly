@@ -77,7 +77,7 @@ _Commit_: `chore: scaffold expo app with lint, ci and docs`
 
 ---
 
-### T1 — Database schema, RLS and balances
+### T1 — Database schema, RLS and balances ✅ done
 
 Write the migrations in `supabase/migrations/` for every table, function, trigger and view in
 ARCHITECTURE.md `## Data model`: the `profiles` trigger on `auth.users`, `participant_count`, the
@@ -98,6 +98,30 @@ join splits by 3); (6) giving an amount to a shared fixed entry creates exactly 
 movement, changing it updates it, setting it to null deletes it; (7) a client cannot insert a
 `shared_movements` row with `fixed_entry_id`
 _Commit_: `feat(db): add schema, rls policies and balance view`
+
+#### Where it departed from the plan
+
+- The equal-split rule lives in `household_participants(household, date)`; `participant_count`
+  counts it, and the balance view joins it to find who shares each expense.
+- Smokes run on Node 24's built-in type stripping (`node tools/rls-smoke.ts`), not `tsx`: no extra
+  dependency. `@types/node` (pinned to 24) is a dev dependency, referenced from the smoke file.
+- The shared-fixed trigger fires on insert and on `amount` updates. Deleting an entry (or its
+  concept) removes the movement through `on delete cascade` on `fixed_entry_id`, not a delete
+  trigger. A movement keeps its first `occurred_on` and description; only the amount follows.
+- Extra integrity the plan didn't list: months must be the first of the month, amounts are
+  non-negative (movements positive), reimbursements need a `paid_to` other than `paid_by`, and
+  `paid_by` / `paid_to` must be active members of the household.
+- `npm run db:types` regenerates `src/lib/database.types.ts`; the file is excluded from Prettier.
+  CLI v3 makes `--local` the default, so the script omits it.
+- Local stack and CI start Supabase without studio, storage, realtime, edge runtime, analytics,
+  mailpit and the pooler: only auth, PostgREST and Postgres are needed.
+
+#### Verified on delivery
+
+- `npx supabase db reset` applies the migration cleanly; `npm run rls:smoke` prints `ok 1` … `ok 7`
+  for the seven acceptance checks.
+- `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
+- The CI `db` job was **not** run: nothing was pushed.
 
 ---
 

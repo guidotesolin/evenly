@@ -2,3 +2,4 @@ tools/oxlint/anti-slop/
 supabase/
 package-lock.json
 .expo/
+src/lib/database.types.ts
