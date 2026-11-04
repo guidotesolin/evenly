@@ -1,10 +1,14 @@
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
+import { Screen } from '@/components/ui';
+import { type, useColors } from '@/theme';
 
 // Placeholder until T5 builds the screen.
 export default function Shared() {
+  const c = useColors();
+
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Compartidos</Text>
-    </View>
+    <Screen edges={[]}>
+      <Text style={[type.body, { color: c.muted }]}>Compartidos</Text>
+    </Screen>
   );
 }

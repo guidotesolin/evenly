@@ -103,7 +103,7 @@ the month.
 | `profiles`          | `id` (= `auth.users.id`), `display_name`                                                                                                                                                 | Created by a trigger on `auth.users` insert, from the Google name                                               |
 | `households`        | `name`, `invite_code` (unique, 6 chars)                                                                                                                                                  |                                                                                                                 |
 | `household_members` | `household_id`, `user_id`, `joined_on` (date), `left_on` (date, null)                                                                                                                    | v1: a user belongs to at most one household at a time (partial unique index on `user_id where left_on is null`) |
-| `fixed_concepts`    | `owner_id`, `name`, `is_shared` (bool), `archived_at` (null)                                                                                                                             | Private to the owner                                                                                            |
+| `fixed_concepts`    | `owner_id`, `name`, `emoji` (text, null; added by T4), `is_shared` (bool), `archived_at` (null)                                                                                          | Private to the owner                                                                                            |
 | `fixed_entries`     | `concept_id`, `month` (date), `amount` (bigint, **null = pending**); unique (`concept_id`, `month`)                                                                                      | Private to the owner (through the concept)                                                                      |
 | `reference_rates`   | `owner_id`, `month`, `ars_per_usd` (numeric); unique (`owner_id`, `month`)                                                                                                               | Private to the owner                                                                                            |
 | `shared_movements`  | `household_id`, `kind` (`expense` \| `reimbursement`), `paid_by`, `paid_to` (null for expenses), `description`, `amount` (bigint), `occurred_on` (date), `fixed_entry_id` (unique, null) | Visible to household members. Rows with `fixed_entry_id` are owned by the trigger, not editable from the app    |
@@ -197,13 +197,110 @@ Two tabs (`expo-router` tabs), plus sign-in and household setup outside the tabs
 
 ## Design and UI copy
 
-T3 produces the visual design with Claude Design (a Design artifact), the maintainer approves it,
-and T3 implements the theme and base components. Until then, this section is empty on purpose:
-screen tasks (T4–T6) must not invent styles or copy.
+Design artifact (Claude Design, approved by the maintainer on 2026-11-04):
+https://claude.ai/artifact/LX5hfdkFvREnSvuWH2azWt — private to the maintainer; share it from the
+artifact's Share menu.
+
+Look ("Libreta"): quiet surfaces, big tabular numbers, one blue accent and orange for what is
+pending or owed (blue/orange rather than green/red, so it reads with colour blindness). Roboto,
+Android's system font, so no font is bundled. Light and dark follow the system
+(`userInterfaceStyle: automatic` + `useColorScheme`).
+
+- **Theme**: `src/theme.ts` — colours (`useColors()`), `space`, `radius`, `touch` (48),
+  `type` scale, and `useNavigationTheme()` for headers and tab bar. Every colour pair passes 4.5:1.
+- **Base components**: `src/components/ui.tsx` — `Screen`, `Card`, `Money`, `Row`, `Button`
+  (`primary` | `secondary` | `text` | `danger`), `Input` (labelled), `MonthSelector`. Screens
+  compose these; they do not style raw primitives.
+- **Money formatting**: `src/lib/money.ts` — `formatArs` (`$ 1.495.000`) and `formatUsd`
+  (`US$ 1.031,03`, `null` without a rate).
+- **Concept emoji**: each fixed concept may have an emoji (🚗 Auto), chosen with the phone's emoji
+  keyboard. Without one, the row shows the name's initial. Read-only rows (shared costs paid by
+  someone else) always show the initial: the other member's concepts are private. Needs
+  `fixed_concepts.emoji` (see Data model).
+- **Tab icons**: the design draws them; v1 ships label-only tabs to avoid an icon dependency
+  (`ponytail:` in `src/app/(tabs)/_layout.tsx`).
 
 ### UI copy
 
-_Filled by T3 with every approved string, per screen._
+Every visible string, per screen. Screen tasks use these verbatim; a new string is added here in
+the same change. `{x}` marks a value. Dates use `es-AR` (`lunes 2 de noviembre`); the month
+selector shows `noviembre 2026`.
+
+**Sign in**
+
+- `Evenly` · `Los gastos de la casa, en un solo lugar.`
+- Button: `Continuar con Google` · hint: `Usá tu cuenta de Google. No hace falta contraseña.`
+- Error: `No se pudo iniciar sesión`
+
+**Household setup**
+
+- `Tu grupo familiar` · `Creá un grupo nuevo o unite a uno con el código que te pasaron.`
+- `Crear un grupo nuevo` · field `Nombre del grupo` (placeholder `Ej.: Casa`) · button
+  `Crear grupo`
+- `o`
+- `Unirme con un código` · field `Código de invitación` (placeholder `ABC123`) · button `Unirme`
+- Created: `Grupo creado` · `Compartí este código para que se unan:` · `Código de invitación` ·
+  `Mantené presionado para copiarlo.` · button `Continuar`
+- Errors: `No se pudo crear el grupo`, `No se pudo unir al grupo`, `Error`
+
+**Tabs and menu**
+
+- Tabs: `Fijos`, `Compartidos`
+- Menu (`⋮`, accessibility label `Menú`): title `Evenly`, `Cerrar sesión`, `Cancelar`; error
+  `No se pudo cerrar sesión`
+- Month selector accessibility labels: `Mes anterior`, `Mes siguiente`
+
+**Fijos**
+
+- Header action: `Conceptos`
+- Rate card: `Dólar de referencia` · `{$ rate}`; without a rate: `Cargar dólar`
+- Row details: `Compartido · total {$ total}` with `tu parte` under the amount; read-only:
+  `Pagó {name} · total {$ total}`; no amount: `Pendiente`
+- Footer: `Total del mes` · `{$ total}` · `≈ {US$ total}` (omitted without a rate) ·
+  `{n} pendiente` / `{n} pendientes`
+- Amount sheet: title `{emoji} {concept}` · `{month} · Compartido` (or just `{month}`) · field
+  `Monto` · shared hint `Al ser compartido, se suma a Compartidos como gasto pagado por vos. Tu
+parte: {$ share}.` · buttons `Dejar pendiente`, `Guardar`
+- Rate sheet: title `Dólar de referencia` · `{month}` · field `Pesos por dólar` · button `Guardar`
+
+**Conceptos**
+
+- Title `Conceptos` · back accessibility label `Volver`
+- New: field `Emoji` · field `Nuevo concepto` (placeholder `Ej.: Gimnasio`) · button `Agregar`
+- Row: switch `Compartido` · accessibility labels `Cambiar emoji de {name}`, `Renombrar {name}`,
+  `Archivar {name}`
+- Notes: `Un concepto compartido es un gasto que pagás vos para la casa: cada monto que cargues
+aparece en Compartidos. Cambiarlo afecta solo los montos que cargues desde ahora.` ·
+  `Tocá el círculo para elegir un emoji. Es opcional: sin emoji se muestra la inicial.`
+- Rename sheet: `Renombrar concepto` · field `Nombre` · button `Guardar`
+- Archive confirm: `¿Archivar {name}?` · `Deja de aparecer en los meses nuevos. Los montos
+cargados se conservan.` · `Archivar`, `Cancelar`
+
+**Compartidos**
+
+- Totals: `Mis gastos` · `Gastos totales`
+- Balance card: `{name} te debe` / `Le debés {$ amount} a {name}` / `Están a mano` · button
+  `Saldar`
+- Day headers: `Hoy`, `Ayer`, then the date (`lunes 2 de noviembre`)
+- Row details: `Pagaste vos`, `Pagó {name}`, `Transferiste vos`, `Te transfirió {name}`; derived
+  rows carry the chip `Fijo`; a settle row's description is `Reembolso`
+- Floating button: `Agregar gasto`
+
+**Expense form**
+
+- Titles `Nuevo gasto` / `Editar gasto` · close accessibility label `Cerrar`
+- Fields `Descripción` (placeholder `Ej.: Supermercado`), `Monto`, `Fecha` (default `Hoy`),
+  `Pagó` with `Vos` / `{name}`
+- Hint: `Se divide en partes iguales: {$ share} cada uno.`
+- Buttons `Guardar`, `Eliminar gasto` · confirm `¿Eliminar este gasto?` · `Eliminar`, `Cancelar`
+
+**Settle sheet**
+
+- `Saldar` · `Registrá lo que {name} te transfirió.` (when I owe: `Registrá lo que le
+transferiste a {name}.`)
+- Field `Monto` (prefilled with the pending balance) · hint `Saldo pendiente: {$ balance}. Podés
+saldar una parte y el resto queda pendiente.` · field `Fecha` (`Hoy`)
+- Buttons `Cancelar`, `Registrar transferencia`
 
 ## Spreadsheet import
 
