@@ -1,10 +1,10 @@
 import { Text, View } from 'react-native';
 
-// Placeholder until T2 adds sign-in and the two tabs.
-export default function Home() {
+// Placeholder until T5 builds the screen.
+export default function Shared() {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Evenly</Text>
+      <Text>Compartidos</Text>
     </View>
   );
 }
