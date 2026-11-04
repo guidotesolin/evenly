@@ -1,12 +1,15 @@
-import { Stack } from 'expo-router';
+import { Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useNavigationTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootStack() {
   const { session, householdId } = useAuth();
+  const navigationTheme = useNavigationTheme();
   const ready = session !== undefined && householdId !== undefined;
 
   useEffect(() => {
@@ -20,17 +23,20 @@ function RootStack() {
   const hasHousehold = householdId !== null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!signedIn}>
-        <Stack.Screen name="sign-in" />
-      </Stack.Protected>
-      <Stack.Protected guard={signedIn && !hasHousehold}>
-        <Stack.Screen name="household" />
-      </Stack.Protected>
-      <Stack.Protected guard={signedIn && hasHousehold}>
-        <Stack.Screen name="(tabs)" />
-      </Stack.Protected>
-    </Stack>
+    <ThemeProvider value={navigationTheme}>
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Protected guard={!signedIn}>
+          <Stack.Screen name="sign-in" />
+        </Stack.Protected>
+        <Stack.Protected guard={signedIn && !hasHousehold}>
+          <Stack.Screen name="household" />
+        </Stack.Protected>
+        <Stack.Protected guard={signedIn && hasHousehold}>
+          <Stack.Screen name="(tabs)" />
+        </Stack.Protected>
+      </Stack>
+    </ThemeProvider>
   );
 }
 
