@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Alert, Button, Text, TextInput, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
+import { Button, Card, Input, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { space, type, useColors } from '@/theme';
 
-// Unstyled on purpose: T3 brings the design.
 export default function HouseholdSetup() {
+  const c = useColors();
   const { refreshHousehold } = useAuth();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -45,11 +47,36 @@ export default function HouseholdSetup() {
 
   if (inviteCode) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
-        <Text>Grupo creado. Compartí este código para que se unan:</Text>
-        <Text selectable style={{ fontSize: 32 }}>
-          {inviteCode}
-        </Text>
+      <Screen style={{ justifyContent: 'space-between', padding: space.xl }}>
+        <View style={{ gap: space.sm, paddingTop: space.xxl }}>
+          <Text accessibilityRole="header" style={[type.title, { color: c.text }]}>
+            Grupo creado
+          </Text>
+          <Text style={[type.body, { color: c.muted }]}>
+            Compartí este código para que se unan:
+          </Text>
+        </View>
+        <Card>
+          <Text style={[type.caption, { color: c.muted, textAlign: 'center' }]}>
+            Código de invitación
+          </Text>
+          <Text
+            selectable
+            style={{
+              fontSize: 40,
+              lineHeight: 48,
+              fontWeight: '700',
+              letterSpacing: 8,
+              textAlign: 'center',
+              color: c.text,
+            }}
+          >
+            {inviteCode}
+          </Text>
+          <Text style={[type.caption, { color: c.muted, textAlign: 'center', fontWeight: '400' }]}>
+            Mantené presionado para copiarlo.
+          </Text>
+        </Card>
         <Button
           title="Continuar"
           disabled={busy}
@@ -61,32 +88,55 @@ export default function HouseholdSetup() {
             });
           }}
         />
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
-      <Text accessibilityRole="header">Tu grupo familiar</Text>
+    <Screen style={{ padding: space.xl, gap: space.xl }}>
+      <View style={{ gap: space.sm, paddingTop: space.xxl }}>
+        <Text accessibilityRole="header" style={[type.title, { color: c.text }]}>
+          Tu grupo familiar
+        </Text>
+        <Text style={[type.body, { color: c.muted }]}>
+          Creá un grupo nuevo o unite a uno con el código que te pasaron.
+        </Text>
+      </View>
 
-      <Text>Crear un grupo nuevo</Text>
-      <TextInput
-        placeholder="Nombre del grupo"
-        value={name}
-        onChangeText={setName}
-        style={{ borderWidth: 1, padding: 8 }}
-      />
-      <Button title="Crear" onPress={create} disabled={busy || !name.trim()} />
+      <Card>
+        <Text style={[type.body, { fontWeight: '500', color: c.text }]}>Crear un grupo nuevo</Text>
+        <Input
+          label="Nombre del grupo"
+          placeholder="Ej.: Casa"
+          value={name}
+          onChangeText={setName}
+        />
+        <Button title="Crear grupo" onPress={create} disabled={busy || !name.trim()} />
+      </Card>
 
-      <Text>O unirte con un código</Text>
-      <TextInput
-        placeholder="Código de invitación"
-        value={code}
-        onChangeText={setCode}
-        autoCapitalize="characters"
-        style={{ borderWidth: 1, padding: 8 }}
-      />
-      <Button title="Unirme" onPress={join} disabled={busy || code.trim().length < 6} />
-    </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: c.line }} />
+        <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>o</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: c.line }} />
+      </View>
+
+      <Card>
+        <Text style={[type.body, { fontWeight: '500', color: c.text }]}>Unirme con un código</Text>
+        <Input
+          label="Código de invitación"
+          placeholder="ABC123"
+          value={code}
+          onChangeText={setCode}
+          autoCapitalize="characters"
+          style={{ fontSize: 18, fontWeight: '500', letterSpacing: 4 }}
+        />
+        <Button
+          title="Unirme"
+          variant="secondary"
+          onPress={join}
+          disabled={busy || code.trim().length < 6}
+        />
+      </Card>
+    </Screen>
   );
 }

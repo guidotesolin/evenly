@@ -177,7 +177,7 @@ _Commit_: `feat(auth): add google sign-in and household setup`
 
 ---
 
-### T3 — Design and implement the look
+### T3 — Design and implement the look ✅ done
 
 **Design and execute.** Using Claude Design (create a Design artifact through the Artifact tool's
 quickstart with `intent: "design"`), design these screens for an Android phone, dark and light
@@ -198,6 +198,27 @@ for every screen; a dev build shows the base components in both system themes; l
 typecheck pass
 _Commit_: `feat(ui): add design system and base components`
 
+#### Where it departed from the plan
+
+- Two screens the card did not list were designed because T4 needs them: the Fijos amount sheet
+  and the "group created" state of household setup.
+- The maintainer asked for an optional **emoji per fixed concept** during review. It is in the
+  design and the copy; the `fixed_concepts.emoji` migration moved to T4, which owns concepts.
+- `Card` joined the base components: the design repeats it (household, totals, rate).
+- Tabs are label-only: the design draws icons, but no icon library is installed (`ponytail:` in
+  `src/app/(tabs)/_layout.tsx`).
+- No `money:smoke`: `src/lib/money.ts` is two `Intl.NumberFormat` calls and a null guard; its
+  output (`$ 1.495.000`, `US$ 1.031,03`) was checked in Node. T4's `fixed:smoke` will exercise it.
+- The Fijos tab shows a preview of `MonthSelector`, `Row` and `Money` until T4 replaces it, so
+  the components can be checked on a dev build.
+
+#### What ran
+
+- `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
+- `npx expo export --platform android`: Hermes bundle built.
+- On the Redmi Note 15 (dev build, Metro reload): sign-in, tabs and the Fijos preview checked by
+  the maintainer in light and dark system themes.
+
 ---
 
 ### T4 — Fixed screen
@@ -208,7 +229,8 @@ the T3 components and copy: month selector (default current month), reference ra
 that month, tap a row to enter or clear the amount (upsert into `fixed_entries`), month total in
 ARS and USD (no USD when the month has no rate), count of pending rows. **A new month shows the
 concepts with empty amounts and no hint of last month's values.** Manage concepts: add, rename,
-archive. Sorted by name. Shared concepts and the read-only rows are T6, not this task: here
+archive, and an optional emoji per concept (migration adding `fixed_concepts.emoji`, see
+ARCHITECTURE.md § Design and UI copy). Sorted by name. Shared concepts and the read-only rows are T6, not this task: here
 `is_shared` is ignored. Put the month-total and USD calculation in a pure function with a smoke
 (`npm run fixed:smoke`).
 
