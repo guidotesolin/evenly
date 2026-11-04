@@ -18,3 +18,16 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
+
+  db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx supabase start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,mailpit,supavisor
+      - run: npx supabase db reset
+      - run: npm run rls:smoke

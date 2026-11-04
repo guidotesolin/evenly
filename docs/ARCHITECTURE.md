@@ -58,7 +58,7 @@ Product names map to code names: `Fijos` → `fixed`, `Compartidos` → `shared`
 | Distribution  | EAS Build (APK, `preview` profile) + EAS Update (OTA)                                           | Install directly on two phones, no Play Store; JS changes reach phones without reinstalling                |
 | DB tooling    | Supabase CLI: `supabase/migrations/*.sql`, local stack via `supabase start`                     | Migrations are plain SQL, versioned in the repo                                                            |
 | Lint / format | ESLint (`eslint-config-expo`) + Prettier + anti-slop (Oxlint)                                   | House standard; `npm run lint` = `eslint && oxlint`                                                        |
-| Checks        | `tools/*-smoke.ts` run with `tsx`                                                               | One runnable check per non-trivial logic, no test framework                                                |
+| Checks        | `tools/*-smoke.ts` run with Node's built-in type stripping (`node tools/x-smoke.ts`)            | One runnable check per non-trivial logic, no test framework                                                |
 | CI            | GitHub Actions                                                                                  | Free for public repos                                                                                      |
 | License       | MIT                                                                                             | Public portfolio repo                                                                                      |
 
@@ -112,8 +112,9 @@ the month.
 An expense is split **equally among the members active on its `occurred_on` date**: `joined_on <=
 occurred_on and (left_on is null or left_on > occurred_on)`. If a third person joins in December,
 November's expenses stay split by two and only December's are split by three. A SQL function
-`participant_count(household_id, date)` is the single place this rule lives; both the balance view
-and the fixed screen's "my share" use it.
+`household_participants(household_id, date)` is the single place this rule lives;
+`participant_count(household_id, date)` counts it. The balance view uses both, and the fixed
+screen's "my share" uses `participant_count`.
 
 Rejected: dividing by the current member count (rewrites history when someone joins) and a
 per-expense participants table (more rows and writes for a rule that is fully determined by dates).
