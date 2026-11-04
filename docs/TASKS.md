@@ -125,7 +125,7 @@ _Commit_: `feat(db): add schema, rls policies and balance view`
 
 ---
 
-### T2 — Google sign-in and household
+### T2 — Google sign-in and household ✅ done
 
 Supabase client in `src/lib/supabase.ts` (session persisted with `expo-secure-store` or
 AsyncStorage, per Supabase's Expo guide). Google Sign-In with
@@ -141,6 +141,39 @@ _Acceptance_: on a dev build on a real Android phone, sign in with Google, creat
 see the code; on a second account, join with that code; both land on the tabs; killing and
 reopening the app keeps the session; signing out returns to sign-in
 _Commit_: `feat(auth): add google sign-in and household setup`
+
+#### Where it departed from the plan
+
+- Session storage is `expo-secure-store` straight (no AsyncStorage): Android has no value size
+  limit, and the app is Android-only. The AES wrapper from Supabase's guide is only needed if iOS
+  ever ships (`ponytail:` comment in `src/lib/supabase.ts`).
+- The Google Sign-In config plugin is **not** in `app.json`: without Firebase it only edits the
+  iOS Info.plist, and with no options it demands `google-services.json`. On Android the module
+  autolinks and needs nothing else.
+- Routing uses `Stack.Protected` guards in the root layout over an `AuthProvider` (session from
+  `onAuthStateChange`, household from `household_members where left_on is null`). The splash
+  stays up until both are known. After creating a household, the screen shows the invite code
+  with a "Continuar" button before the guard moves to the tabs.
+- The header menu is a native `Alert` with "Cerrar sesión" (`ponytail:` comment); T3 picks the
+  real menu component. Sign-out also calls `GoogleSignin.signOut()` so the next sign-in shows the
+  account picker.
+- `supabase/config.toml` enables the Google provider for the local stack, reading the Web client
+  ID from `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` at `supabase start` (unset, the stack still starts).
+- No smoke: the task is glue around Supabase and the Google SDK, with no pure logic to check.
+
+#### Verified on delivery
+
+- `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
+- `npx expo export --platform android` produces the Hermes bundle with the new routes.
+- `npx supabase start` with and without `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` set; the auth container
+  receives the substituted client ID; `npm run rls:smoke` still prints `ok 1` … `ok 7`.
+- On a Redmi Note 15 (dev build over wireless `adb`, local stack reached at the LAN IP): signed in
+  with Google, created a household and saw its invite code, landed on the tabs; killing and
+  reopening the app kept the session; "Cerrar sesión" returned to sign-in; a second Google
+  account joined with the code and landed on the tabs. The database shows both accounts as active
+  members of the same household.
+- The README's first draft pointed at `~/.android/debug.keystore` for the dev SHA-1; Expo signs
+  the dev build with the template's `android/app/debug.keystore`. Fixed during acceptance.
 
 ---
 

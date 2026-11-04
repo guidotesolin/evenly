@@ -49,18 +49,19 @@ Product names map to code names: `Fijos` → `fixed`, `Compartidos` → `shared`
 
 ## Stack
 
-| Layer         | Choice                                                                                          | Why                                                                                                        |
-| ------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| App           | React Native + Expo (SDK current at T0), `expo-router`, TypeScript strict                       | Real Android app for the CV, reuses Guido's React/TS; Expo removes native tooling pain                     |
-| Backend       | Supabase: Postgres + Auth + Row Level Security                                                  | No server to run; RLS keeps each person's fixed costs private; free tier covers two users                  |
-| Client data   | `@supabase/supabase-js` with generated types (`supabase gen types`)                             | Typed queries without an ORM; the DB is the API                                                            |
-| Auth          | Google Sign-In: `@react-native-google-signin/google-signin` + `supabase.auth.signInWithIdToken` | Both use Google accounts; native flow, no passwords. Requires a dev build (`expo-dev-client`), not Expo Go |
-| Distribution  | EAS Build (APK, `preview` profile) + EAS Update (OTA)                                           | Install directly on two phones, no Play Store; JS changes reach phones without reinstalling                |
-| DB tooling    | Supabase CLI: `supabase/migrations/*.sql`, local stack via `supabase start`                     | Migrations are plain SQL, versioned in the repo                                                            |
-| Lint / format | ESLint (`eslint-config-expo`) + Prettier + anti-slop (Oxlint)                                   | House standard; `npm run lint` = `eslint && oxlint`                                                        |
-| Checks        | `tools/*-smoke.ts` run with Node's built-in type stripping (`node tools/x-smoke.ts`)            | One runnable check per non-trivial logic, no test framework                                                |
-| CI            | GitHub Actions                                                                                  | Free for public repos                                                                                      |
-| License       | MIT                                                                                             | Public portfolio repo                                                                                      |
+| Layer         | Choice                                                                                          | Why                                                                                                                                    |
+| ------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| App           | React Native + Expo (SDK current at T0), `expo-router`, TypeScript strict                       | Real Android app for the CV, reuses Guido's React/TS; Expo removes native tooling pain                                                 |
+| Backend       | Supabase: Postgres + Auth + Row Level Security                                                  | No server to run; RLS keeps each person's fixed costs private; free tier covers two users                                              |
+| Client data   | `@supabase/supabase-js` with generated types (`supabase gen types`)                             | Typed queries without an ORM; the DB is the API                                                                                        |
+| Auth          | Google Sign-In: `@react-native-google-signin/google-signin` + `supabase.auth.signInWithIdToken` | Both use Google accounts; native flow, no passwords. Requires a dev build (`expo-dev-client`), not Expo Go                             |
+| Session       | `expo-secure-store` as the Supabase auth storage; tokens refresh only while the app is active   | Android keystore-backed, no size cap there. Routing guards (`Stack.Protected`) read the session and the active `household_members` row |
+| Distribution  | EAS Build (APK, `preview` profile) + EAS Update (OTA)                                           | Install directly on two phones, no Play Store; JS changes reach phones without reinstalling                                            |
+| DB tooling    | Supabase CLI: `supabase/migrations/*.sql`, local stack via `supabase start`                     | Migrations are plain SQL, versioned in the repo                                                                                        |
+| Lint / format | ESLint (`eslint-config-expo`) + Prettier + anti-slop (Oxlint)                                   | House standard; `npm run lint` = `eslint && oxlint`                                                                                    |
+| Checks        | `tools/*-smoke.ts` run with Node's built-in type stripping (`node tools/x-smoke.ts`)            | One runnable check per non-trivial logic, no test framework                                                                            |
+| CI            | GitHub Actions                                                                                  | Free for public repos                                                                                                                  |
+| License       | MIT                                                                                             | Public portfolio repo                                                                                                                  |
 
 Anti-slop adjustment: `no-runtime-typeof` runs with `allowInTypeGuards`. The only external data
 parsed at a boundary is the spreadsheet import (T7), which uses Zod; the app talks to Supabase
