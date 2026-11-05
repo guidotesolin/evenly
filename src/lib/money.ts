@@ -12,9 +12,12 @@ export function formatArs(amount: number): string {
   return ars.format(Math.round(amount));
 }
 
-/** A month without a reference rate has no USD estimate (not zero). */
+/**
+ * Amounts are stored in pesos, so USD is always an estimate and carries `≈`. A month without a
+ * reference rate has no USD estimate (not zero).
+ */
 export function formatUsd(amountArs: number, arsPerUsd: number | null): string | null {
   if (!arsPerUsd) return null;
 
-  return usd.format(amountArs / arsPerUsd);
+  return `≈ ${usd.format(amountArs / arsPerUsd)}`;
 }
