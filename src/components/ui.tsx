@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import {
+  KeyboardAvoidingView,
+  Modal,
   Pressable,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -9,8 +12,9 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
-import { formatArs } from '@/lib/money';
+import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
+import { monthLabel } from '@/lib/fixed';
+import { formatArs, formatUsd } from '@/lib/money';
 import { radius, space, touch, type, useColors } from '@/theme';
 
 // Base components of the approved design (ARCHITECTURE.md § Design and UI copy). Screens compose
@@ -57,15 +61,15 @@ export function Card({ children, style }: { children: ReactNode; style?: StylePr
   );
 }
 
-type MoneyProps = { amount: number; style?: StyleProp<TextStyle> };
+type MoneyProps = { amount: number; usdRate?: number | null; style?: StyleProp<TextStyle> };
 
-/** ARS amount, tabular digits so columns line up. */
-export function Money({ amount, style }: MoneyProps) {
+/** ARS amount, tabular digits so columns line up. With `usdRate`, its USD estimate instead. */
+export function Money({ amount, usdRate = null, style }: MoneyProps) {
   const c = useColors();
 
   return (
     <Text style={[type.body, { color: c.text, fontVariant: ['tabular-nums'] }, style]}>
-      {formatArs(amount)}
+      {formatUsd(amount, usdRate) ?? formatArs(amount)}
     </Text>
   );
 }
@@ -209,7 +213,7 @@ type MonthSelectorProps = {
 
 export function MonthSelector({ month, onChange }: MonthSelectorProps) {
   const c = useColors();
-  const label = `${month.toLocaleDateString('es-AR', { month: 'long' })} ${month.getFullYear()}`;
+  const label = monthLabel(month);
   const shift = (by: number) => onChange(new Date(month.getFullYear(), month.getMonth() + by, 1));
 
   return (
@@ -222,21 +226,42 @@ export function MonthSelector({ month, onChange }: MonthSelectorProps) {
         backgroundColor: c.surface,
       }}
     >
-      <Arrow glyph="‹" label="Mes anterior" onPress={() => shift(-1)} />
+      <IconButton
+        glyph="‹"
+        label="Mes anterior"
+        onPress={() => shift(-1)}
+        size={28}
+        color={c.text}
+      />
       <Text
         accessibilityLiveRegion="polite"
         style={[type.body, { fontWeight: '500', color: c.text }]}
       >
         {label}
       </Text>
-      <Arrow glyph="›" label="Mes siguiente" onPress={() => shift(1)} />
+      <IconButton
+        glyph="›"
+        label="Mes siguiente"
+        onPress={() => shift(1)}
+        size={28}
+        color={c.text}
+      />
     </View>
   );
 }
 
-type ArrowProps = { glyph: string; label: string; onPress: () => void };
+type IconButtonProps = {
+  glyph: string;
+  label: string;
+  onPress: () => void;
+  size?: number;
+  /** Defaults to muted; header and month arrows use the text colour. */
+  color?: string;
+};
 
-function Arrow({ glyph, label, onPress }: ArrowProps) {
+// ponytail: Unicode glyphs instead of the design's SVG icons, like the label-only tabs. Swap
+// for an icon set when one is installed.
+export function IconButton({ glyph, label, onPress, size = 20, color }: IconButtonProps) {
   const c = useColors();
 
   return (
@@ -247,7 +272,71 @@ function Arrow({ glyph, label, onPress }: ArrowProps) {
       android_ripple={{ color: c.line, borderless: true }}
       style={{ width: touch, height: touch, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Text style={{ fontSize: 28, lineHeight: 32, color: c.text }}>{glyph}</Text>
+      <Text style={{ fontSize: size, lineHeight: size + 4, color: color ?? c.muted }}>{glyph}</Text>
     </Pressable>
+  );
+}
+
+type SheetProps = {
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+};
+
+/** Bottom sheet over a scrim; tapping the scrim or Android's back closes it. */
+export function Sheet({ visible, onClose, title, subtitle, children }: SheetProps) {
+  const c = useColors();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <Pressable
+          accessible={false}
+          onPress={onClose}
+          style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}
+        />
+        <View
+          accessibilityViewIsModal
+          style={{
+            gap: space.lg,
+            paddingTop: space.md,
+            paddingHorizontal: space.lg,
+            paddingBottom: space.xl + insets.bottom,
+            borderTopLeftRadius: radius.sheet,
+            borderTopRightRadius: radius.sheet,
+            backgroundColor: c.surface,
+          }}
+        >
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 32,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: c.line,
+            }}
+          />
+          <View style={{ gap: space.xs }}>
+            <Text accessibilityRole="header" style={[type.title, { color: c.text }]}>
+              {title}
+            </Text>
+            {subtitle ? (
+              <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>{subtitle}</Text>
+            ) : null}
+          </View>
+          {children}
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }

@@ -34,6 +34,7 @@ function RootStack() {
         </Stack.Protected>
         <Stack.Protected guard={signedIn && hasHousehold}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="concepts" />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>

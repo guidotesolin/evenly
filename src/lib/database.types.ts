@@ -25,14 +25,14 @@ export type Database = {
           Tables: {
             "fixed_concepts": {
                   Row: {
-                    "archived_at": string | null,"created_at": string,"id": string,"is_shared": boolean,"name": string,"owner_id": string
+                    "archived_at": string | null,"created_at": string,"emoji": string | null,"id": string,"is_shared": boolean,"name": string,"owner_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived_at"?: string | null,"created_at"?: string,"id"?: string,"is_shared"?: boolean,"name": string,"owner_id"?: string
+                    "archived_at"?: string | null,"created_at"?: string,"emoji"?: string | null,"id"?: string,"is_shared"?: boolean,"name": string,"owner_id"?: string
                   }
                   Update: {
-                    "archived_at"?: string | null,"created_at"?: string,"id"?: string,"is_shared"?: boolean,"name"?: string,"owner_id"?: string
+                    "archived_at"?: string | null,"created_at"?: string,"emoji"?: string | null,"id"?: string,"is_shared"?: boolean,"name"?: string,"owner_id"?: string
                   }
                   Relationships: [
                     {
