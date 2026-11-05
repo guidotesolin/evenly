@@ -209,10 +209,11 @@ Android's system font, so no font is bundled. Light and dark follow the system
 - **Theme**: `src/theme.ts` — colours (`useColors()`), `space`, `radius`, `touch` (48),
   `type` scale, and `useNavigationTheme()` for headers and tab bar. Every colour pair passes 4.5:1.
 - **Base components**: `src/components/ui.tsx` — `Screen`, `Card`, `Money`, `Row`, `Button`
-  (`primary` | `secondary` | `text` | `danger`), `Input` (labelled), `MonthSelector`. Screens
-  compose these; they do not style raw primitives.
+  (`primary` | `secondary` | `text` | `danger`), `Input` (labelled), `MonthSelector`, `Sheet`
+  (bottom sheet with title and subtitle), `IconButton` (48 dp glyph button with a label). Screens compose these; they do not style raw
+  primitives.
 - **Money formatting**: `src/lib/money.ts` — `formatArs` (`$ 1.495.000`) and `formatUsd`
-  (`US$ 1.031,03`, `null` without a rate).
+  (`≈ US$ 1.031,03`, always with `≈` since amounts are stored in pesos; `null` without a rate).
 - **Concept emoji**: each fixed concept may have an emoji (🚗 Auto), chosen with the phone's emoji
   keyboard. Without one, the row shows the name's initial. Read-only rows (shared costs paid by
   someone else) always show the initial: the other member's concepts are private. Needs
@@ -224,7 +225,7 @@ Android's system font, so no font is bundled. Light and dark follow the system
 
 Every visible string, per screen. Screen tasks use these verbatim; a new string is added here in
 the same change. `{x}` marks a value. Dates use `es-AR` (`lunes 2 de noviembre`); the month
-selector shows `noviembre 2026`.
+selector shows `Noviembre 2026` (capitalized, as a title).
 
 **Sign in**
 
@@ -253,7 +254,11 @@ selector shows `noviembre 2026`.
 **Fijos**
 
 - Header action: `Conceptos`
-- Rate card: `Dólar de referencia` · `{$ rate}`; without a rate: `Cargar dólar`
+- Rate card: `Dólar de referencia` · `{$ rate}`; without a rate, the same
+  `Dólar de referencia` as a call to action
+- Currency switch in the rate card (only with a rate; display only, amounts are typed in pesos):
+  `ARS` · `USD` (a11y: `Ver en pesos` · `Ver en dólares`). In `USD` the rows and total show the
+  estimate (`≈ US$ …`) and the line under the total shows the pesos.
 - Row details: `Compartido · total {$ total}` with `tu parte` under the amount; read-only:
   `Pagó {name} · total {$ total}`; no amount: `Pendiente`
 - Footer: `Total del mes` · `{$ total}` · `≈ {US$ total}` (omitted without a rate) ·
@@ -272,7 +277,8 @@ parte: {$ share}.` · buttons `Dejar pendiente`, `Guardar`
 - Notes: `Un concepto compartido es un gasto que pagás vos para la casa: cada monto que cargues
 aparece en Compartidos. Cambiarlo afecta solo los montos que cargues desde ahora.` ·
   `Tocá el círculo para elegir un emoji. Es opcional: sin emoji se muestra la inicial.`
-- Rename sheet: `Renombrar concepto` · field `Nombre` · button `Guardar`
+- Edit sheet (opened from the circle or the pencil): `Editar concepto` · fields `Emoji`,
+  `Nombre` · button `Guardar`
 - Archive confirm: `¿Archivar {name}?` · `Deja de aparecer en los meses nuevos. Los montos
 cargados se conservan.` · `Archivar`, `Cancelar`
 

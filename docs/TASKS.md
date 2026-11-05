@@ -221,7 +221,7 @@ _Commit_: `feat(ui): add design system and base components`
 
 ---
 
-### T4 — Fixed screen
+### T4 — Fixed screen ✅ done
 
 Build the **Fijos** tab as specified in ARCHITECTURE.md `## Screens` (3) and the T3 design, using
 the T3 components and copy: month selector (default current month), reference rate for the month
@@ -240,6 +240,53 @@ decimals; no rate → no USD); on the phone: enter a rate and three amounts, lea
 total and the pending count are right; go to next month → same concepts, all empty; archive a
 concept → it disappears from future months but stays in months that have an entry
 _Commit_: `feat(fixed): add monthly fixed costs screen`
+
+#### Where it departed from the plan
+
+- `src/lib/fixed.ts` holds the pure pieces (`summarizeMonth`, `parseWholeNumber`, `monthKey`,
+  `monthLabel`). The USD estimate stays in T3's `formatUsd`; `fixed:smoke` checks both.
+  `tsconfig.json` gains `allowImportingTsExtensions` so smokes can import `src/` with `.ts` paths
+  under Node's type stripping.
+- `Sheet` (bottom sheet on a native `Modal`) joined the base components: amount, rate and rename
+  use it, and T5's settle sheet can too.
+- "Dejar pendiente" upserts `amount = null` instead of deleting the entry; both read as pending.
+  An archived concept stays in every month where it has an entry, pending included, so an
+  amount cleared by mistake can be entered again.
+- Amounts and the rate take whole pesos in `es-AR` style: dots group thousands, a typed comma
+  is ignored and pasted cents are dropped (`$1.757.740,51` is 1757740, not ×100 or rounded up). Both inputs group thousands while typing
+  (`groupThousands`, from the phone check: 100000 and 1000000 looked alike).
+- An `ARS | USD` switch in the rate card shows rows and total as USD estimates (asked during the
+  phone check; display only, not remembered). Every USD value carries `≈` (`formatUsd`). `Money` takes an optional `usdRate`.
+- Emoji and name are edited together in one sheet, `Editar concepto` (new copy, replacing the
+  design's `Renombrar concepto`), opened from the circle or the pencil. Saving on Guardar, not
+  on blur, means leaving the screen never drops an edit. No single-grapheme check on the emoji
+  (`ponytail:` in `src/app/concepts.tsx`); `fixed_concepts.emoji` rejects `''`.
+- Rename, archive, back, month arrows and the menu share `IconButton` (Unicode glyphs ✎ ⊖ ← ‹ ›
+  ⋮, like the label-only tabs). The back button on Conceptos is a custom `headerLeft`: the
+  native one can't carry the `Volver` label.
+- Changing month keeps the previous month on screen, dimmed and read-only, until the new one
+  arrives; late responses for another month are dropped. Pull to refresh reloads the month and
+  is the retry after a failed load. Writes ignore a second tap while one is in flight.
+- The "Compartido" switch, its note and the amount sheet's shared hint are left for T6.
+
+#### What ran
+
+- `npx supabase db reset` applies both migrations; `npm run db:types` regenerated the types.
+- `npm run fixed:smoke`: `ok fixed`. `npm run rls:smoke`: `ok 1` … `ok 7`.
+- Code review (high) found 10 issues; all applied. Re-ran the smokes, lint, format, typecheck,
+  the Android export, and the throwaway DB script for the new archived filter (a pending entry
+  keeps an archived concept in its month only).
+- A throwaway script against the local stack (deleted after) ran the screen's exact queries:
+  four amounts entered and one left pending read back right; upserting the rate twice keeps one
+  row; the next month lists the same concepts with no amounts and no rate; archiving a concept
+  with an amount keeps it in that month only, archiving a pending one hides it everywhere.
+- `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
+- `npx expo export --platform android`: Hermes bundle built.
+- Phone acceptance by the maintainer on the Redmi: rate, amounts with pending ones, next month,
+  archive; the sheets sit right above the keyboard. The thousands grouping, the `ARS | USD`
+  switch, `≈` on USD, capitalized months, no cents and the empty-rate label came from that check.
+- `db reset` wiped the T2 account and household on the local stack; new migrations go through
+  `npx supabase migration up`, which keeps the data.
 
 ---
 
