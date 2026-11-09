@@ -1,54 +1,88 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
 import { Button, Input, Money, MonthSelector, Row, Screen, Sheet } from '@/components/ui';
+import { fetchMembers, useAuth, type Member } from '@/lib/auth';
 import {
   groupThousands,
   monthKey,
   monthLabel,
+  monthRows,
   parseWholeNumber,
+  rowTotal,
   summarizeMonth,
+  type FixedRow,
 } from '@/lib/fixed';
 import { formatArs, formatUsd } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
 import { radius, space, type, useColors } from '@/theme';
 
-// Fijos (ARCHITECTURE.md § Screens 3). `is_shared` is ignored until T6.
-
-type Concept = { id: string; name: string; emoji: string | null; amount: number | null };
+// Fijos (ARCHITECTURE.md § Screens 3 and § Shared fixed costs).
 
 /** `key` is the month the data belongs to (`monthKey`). */
-type MonthData = { key: string; concepts: Concept[]; rate: number | null };
+type MonthData = { key: string; rows: FixedRow[]; rate: number | null; members: Member[] };
 
-async function fetchMonth(key: string): Promise<MonthData> {
-  const [concepts, rate] = await Promise.all([
+async function fetchMonth(month: Date, householdId: string, me: string): Promise<MonthData> {
+  const key = monthKey(month);
+
+  const [concepts, movements, pending, rate, members] = await Promise.all([
     supabase
       .from('fixed_concepts')
-      .select('id, name, emoji, archived_at, fixed_entries(amount)')
+      .select('id, name, emoji, is_shared, archived_at, fixed_entries(id, amount)')
       .eq('fixed_entries.month', key)
       .order('name'),
+    // Shared fixed costs derived this month: mine give my share, the others' are read-only rows.
+    // The trigger dates them inside the entry's month.
+    supabase
+      .from('shared_movements')
+      .select('fixed_entry_id, paid_by, description, amount, my_share')
+      .eq('household_id', householdId)
+      .not('fixed_entry_id', 'is', null)
+      .gte('occurred_on', key)
+      .lt('occurred_on', monthKey(new Date(month.getFullYear(), month.getMonth() + 1, 1))),
+    // The others' shared costs not entered yet: pending for me too.
+    supabase.rpc('pending_shared_concepts', { target_month: key }),
     supabase.from('reference_rates').select('ars_per_usd').eq('month', key).maybeSingle(),
+    fetchMembers(householdId),
   ]);
 
   if (concepts.error) throw concepts.error;
 
+  if (movements.error) throw movements.error;
+
+  if (pending.error) throw pending.error;
+
   if (rate.error) throw rate.error;
+
+  // Active concepts, plus archived ones with an entry this month (even a pending one, so it can
+  // still be filled in). A new month starts empty: entries are only read for this month.
+  const own = concepts.data.flatMap(({ fixed_entries, archived_at, is_shared, ...concept }) =>
+    archived_at === null || fixed_entries.length > 0
+      ? [
+          {
+            ...concept,
+            isShared: is_shared,
+            entryId: fixed_entries[0]?.id ?? null,
+            amount: fixed_entries[0]?.amount ?? null,
+          },
+        ]
+      : [],
+  );
 
   return {
     key,
-    // Active concepts, plus archived ones with an entry this month (even a pending one, so it
-    // can still be filled in). A new month starts empty: entries are only read for this month.
-    concepts: concepts.data.flatMap(({ fixed_entries, archived_at, ...concept }) =>
-      archived_at === null || fixed_entries.length > 0
-        ? [{ ...concept, amount: fixed_entries[0]?.amount ?? null }]
-        : [],
-    ),
+    rows: monthRows(own, movements.data, pending.data, me),
     rate: rate.data?.ars_per_usd ?? null,
+    members,
   };
 }
 
 export default function Fixed() {
   const c = useColors();
+  const { session, householdId } = useAuth();
+  // The tabs only mount with a session and a household (root layout guards).
+  const me = session?.user.id ?? '';
+  const household = householdId ?? '';
 
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -62,7 +96,7 @@ export default function Fixed() {
   const [refreshing, setRefreshing] = useState(false);
   const [sheet, setSheet] = useState<'amount' | 'rate' | null>(null);
   // Kept after the sheet closes so its title doesn't blank out during the fade.
-  const [concept, setConcept] = useState<Concept | null>(null);
+  const [concept, setConcept] = useState<FixedRow | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   // Display only: amounts are always stored and typed in pesos.
@@ -71,24 +105,25 @@ export default function Fixed() {
   const writing = useRef(false);
 
   const load = useCallback(
-    (key: string) =>
-      fetchMonth(key)
+    (shown: Date) =>
+      fetchMonth(shown, household, me)
         .then((next) => {
           if (next.key === shownKey.current) setData(next);
         })
         .catch((error: Error) => Alert.alert('Error', error.message)),
-    [],
+    [household, me],
   );
 
   // On focus too, so concepts changed in Conceptos show up when coming back.
   useFocusEffect(
     useCallback(() => {
-      load(monthKey(month));
+      load(month);
     }, [load, month]),
   );
 
-  async function save(write: PromiseLike<{ error: Error | null }>) {
-    if (writing.current) return;
+  /** Runs a write, then reloads the month; `true` if it worked. */
+  async function save(write: PromiseLike<{ error: Error | null }>): Promise<boolean> {
+    if (writing.current) return false;
 
     writing.current = true;
     setBusy(true);
@@ -100,14 +135,17 @@ export default function Fixed() {
     if (error) {
       Alert.alert('Error', error.message);
 
-      return;
+      return false;
     }
 
-    setSheet(null);
-    await load(monthKey(month));
+    await load(month);
+
+    return true;
   }
 
-  const saveAmount = (target: Concept, amount: number | null) =>
+  const close = (saved: boolean) => saved && setSheet(null);
+
+  const saveAmount = (target: FixedRow, amount: number | null) =>
     save(
       supabase
         .from('fixed_entries')
@@ -115,7 +153,18 @@ export default function Fixed() {
           { concept_id: target.id, month: monthKey(month), amount },
           { onConflict: 'concept_id,month' },
         ),
+    ).then(close);
+
+  /** The amount sheet's switch: same as in Conceptos, it applies to amounts saved from now on. */
+  async function toggleShared(target: FixedRow, isShared: boolean) {
+    setConcept({ ...target, isShared });
+
+    const saved = await save(
+      supabase.from('fixed_concepts').update({ is_shared: isShared }).eq('id', target.id),
     );
+
+    if (!saved) setConcept(target);
+  }
 
   const saveRate = (arsPerUsd: number) =>
     save(
@@ -125,16 +174,32 @@ export default function Fixed() {
           { month: monthKey(month), ars_per_usd: arsPerUsd },
           { onConflict: 'owner_id,month' },
         ),
-    );
+    ).then(close);
 
   // Until the new month arrives, the previous one stays on screen, dimmed and read-only.
   const stale = data?.key !== monthKey(month);
   const parsed = parseWholeNumber(text);
-  const summary = summarizeMonth(data?.concepts.map((row) => row.amount) ?? []);
+  const summary = summarizeMonth(data?.rows.map(rowTotal) ?? []);
   const rate = data?.rate ?? null;
   const usd = formatUsd(summary.total, rate);
   // A month without a rate falls back to pesos.
   const usdRate = inUsd ? rate : null;
+  const nameOf = (id: string) => data?.members.find((member) => member.id === id)?.name ?? '';
+  // ponytail: the hint splits by today's active members; the saved row shows the movement's real
+  // share (participant_count on its date). Differs only in a month when someone joined or left.
+  const sharers = data?.members.filter((member) => member.active).length ?? 0;
+
+  function detailOf(row: FixedRow): string | undefined {
+    const total = row.amount === null ? '' : ` · total ${formatArs(row.amount)}`;
+
+    if (row.paidBy !== null) {
+      const name = nameOf(row.paidBy);
+
+      return row.amount === null ? `Paga ${name}` : `Pagó ${name}${total}`;
+    }
+
+    return row.share === null ? undefined : `Compartido${total}`;
+  }
 
   return (
     <Screen edges={[]} style={{ padding: 0, gap: 0 }}>
@@ -148,7 +213,7 @@ export default function Fixed() {
             progressBackgroundColor={c.surface}
             onRefresh={async () => {
               setRefreshing(true);
-              await load(monthKey(month));
+              await load(month);
               setRefreshing(false);
             }}
           />
@@ -204,13 +269,15 @@ export default function Fixed() {
             </View>
 
             <View style={{ borderRadius: radius.field, overflow: 'hidden' }}>
-              {data.concepts.map((row) => (
+              {data.rows.map((row) => (
                 <Row
                   key={row.id}
                   icon={row.emoji ?? row.name.charAt(0).toUpperCase()}
                   title={row.name}
+                  detail={detailOf(row)}
+                  // Read-only: someone else's shared cost, edited from their phone.
                   onPress={
-                    stale
+                    stale || row.paidBy !== null
                       ? undefined
                       : () => {
                           setText(row.amount === null ? '' : groupThousands(String(row.amount)));
@@ -221,6 +288,13 @@ export default function Fixed() {
                   right={
                     row.amount === null ? (
                       <PendingChip label="Pendiente" />
+                    ) : row.share !== null ? (
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Money amount={row.share} usdRate={usdRate} style={{ fontWeight: '500' }} />
+                        <Text style={[type.caption, { color: c.muted, fontWeight: '400' }]}>
+                          tu parte
+                        </Text>
+                      </View>
                     ) : (
                       <Money amount={row.amount} usdRate={usdRate} style={{ fontWeight: '500' }} />
                     )
@@ -269,7 +343,7 @@ export default function Fixed() {
         visible={sheet === 'amount'}
         onClose={() => setSheet(null)}
         title={concept ? `${concept.emoji ?? ''} ${concept.name}`.trim() : ''}
-        subtitle={monthLabel(month)}
+        subtitle={concept?.isShared ? `${monthLabel(month)} · Compartido` : monthLabel(month)}
       >
         <Input
           label="Monto"
@@ -281,6 +355,25 @@ export default function Fixed() {
           autoFocus
           style={[type.title, { fontVariant: ['tabular-nums'] }]}
         />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <Text style={[type.body, { flex: 1, color: c.text }]}>Compartido</Text>
+          <Switch
+            accessibilityLabel="Compartido"
+            value={concept?.isShared ?? false}
+            disabled={busy}
+            trackColor={{ true: c.accent, false: c.line }}
+            thumbColor={c.surface}
+            onValueChange={(isShared) => {
+              if (concept) toggleShared(concept, isShared);
+            }}
+          />
+        </View>
+        {concept?.isShared && parsed && sharers > 0 ? (
+          <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>
+            Al ser compartido, se suma a Compartidos como gasto pagado por vos. Tu parte:{' '}
+            {formatArs(parsed / sharers)}.
+          </Text>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <View style={{ flex: 1 }}>
             <Button

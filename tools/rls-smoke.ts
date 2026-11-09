@@ -247,3 +247,42 @@ const forged = await a.client.from('shared_movements').insert({
 assert.equal(forged.error?.code, '42501', 'client inserted a movement with fixed_entry_id');
 
 console.log('ok 7 fixed_entry_id is trigger-only');
+
+// (8) pending_shared_concepts exposes only the other members' shared concepts with no amount.
+const water = await a.client
+  .from('fixed_concepts')
+  .insert({ name: 'Agua', is_shared: true })
+  .select()
+  .single();
+
+if (water.error) throw water.error;
+
+async function pendingNames(client: Client): Promise<string[]> {
+  const { data, error } = await client.rpc('pending_shared_concepts', {
+    target_month: '2026-05-01',
+  });
+
+  if (error) throw error;
+
+  return data.map((row) => row.name).sort();
+}
+
+// B sees A's shared Agua and Luz, not A's private concepts; A doesn't see their own; someone
+// outside the household sees nothing.
+const stranger = await signUp('Dani');
+
+assert.deepEqual(await pendingNames(b.client), ['Agua', 'Luz']);
+
+assert.deepEqual(await pendingNames(a.client), []);
+
+assert.deepEqual(await pendingNames(stranger.client), []);
+
+const waterEntry = await a.client
+  .from('fixed_entries')
+  .insert({ concept_id: water.data.id, month: '2026-05-01', amount: 5000 });
+
+if (waterEntry.error) throw waterEntry.error;
+
+assert.deepEqual(await pendingNames(b.client), ['Luz']);
+
+console.log('ok 8 pending shared concepts stay inside the household');

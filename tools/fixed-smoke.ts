@@ -4,7 +4,9 @@ import {
   groupThousands,
   monthKey,
   monthLabel,
+  monthRows,
   parseWholeNumber,
+  rowTotal,
   summarizeMonth,
 } from '../src/lib/fixed.ts';
 import { formatArs, formatUsd } from '../src/lib/money.ts';
@@ -66,5 +68,53 @@ assert.equal(monthKey(new Date(2026, 10, 15)), '2026-11-01');
 assert.equal(monthKey(new Date(2027, 0, 1)), '2027-01-01');
 
 assert.equal(monthLabel(new Date(2026, 10, 1)), 'Noviembre 2026');
+
+// Shared fixed costs (T6). the author: Luz shared with a derived movement, Auto all his, Gas marked
+// shared after its amount was entered (no movement: stays whole), Seguro pending. Ana's
+// Internet comes in read-only with the author's half; her Agua, not entered yet, is pending for him too.
+const rows = monthRows(
+  [
+    { id: 'c-luz', name: 'Luz', emoji: null, isShared: true, entryId: 'e-luz', amount: 26000 },
+    { id: 'c-auto', name: 'Auto', emoji: '🚗', isShared: false, entryId: 'e-auto', amount: 90000 },
+    { id: 'c-gas', name: 'Gas', emoji: null, isShared: true, entryId: 'e-gas', amount: 8000 },
+    { id: 'c-seguro', name: 'Seguro', emoji: null, isShared: false, entryId: null, amount: null },
+  ],
+  [
+    {
+      fixed_entry_id: 'e-luz',
+      paid_by: 'me',
+      description: 'Luz',
+      amount: 26000,
+      my_share: 13000,
+    },
+    {
+      fixed_entry_id: 'e-net',
+      paid_by: 'partner',
+      description: 'Internet',
+      amount: 30000,
+      my_share: 15000,
+    },
+  ],
+  [{ concept_id: 'c-agua', name: 'Agua', owner_id: 'partner' }],
+  'me',
+);
+
+assert.deepEqual(
+  rows.map((row) => [row.name, row.share, row.paidBy]),
+  [
+    ['Agua', null, 'partner'],
+    ['Auto', null, null],
+    ['Gas', null, null],
+    ['Internet', 15000, 'partner'],
+    ['Luz', 13000, null],
+    ['Seguro', null, null],
+  ],
+);
+
+// The total adds only my share of split rows; pending still counts as pending.
+assert.deepEqual(summarizeMonth(rows.map(rowTotal)), {
+  total: 90000 + 8000 + 15000 + 13000,
+  pending: 2,
+});
 
 console.log('ok fixed');

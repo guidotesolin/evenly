@@ -238,6 +238,11 @@ isOneToOne: false
                            },
 "participant_count":
 { Args: { "on_date": string,"target_household": string }; Returns: number
+                           },
+"pending_shared_concepts":
+{ Args: { "target_month": string }; Returns: {
+              "concept_id": string,"name": string,"owner_id": string
+            }[]
                            }
           }
           Enums: {

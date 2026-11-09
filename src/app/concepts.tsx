@@ -1,13 +1,13 @@
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Button, IconButton, Input, Screen, Sheet } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 import { radius, space, touch, type, useColors } from '@/theme';
 
-// Conceptos: add, rename, archive and pick an emoji. The "Compartido" switch is T6.
+// Conceptos: add, rename, archive, pick an emoji and mark as shared.
 
-type Concept = { id: string; name: string; emoji: string | null };
+type Concept = { id: string; name: string; emoji: string | null; is_shared: boolean };
 
 // ponytail: the emoji field takes any text and stores it trimmed; no single-grapheme check.
 // Add one (Intl.Segmenter) if letters typed there ever become a problem.
@@ -16,7 +16,7 @@ const emojiOrNull = (text: string) => text.trim() || null;
 async function fetchConcepts(): Promise<Concept[]> {
   const { data, error } = await supabase
     .from('fixed_concepts')
-    .select('id, name, emoji')
+    .select('id, name, emoji, is_shared')
     .is('archived_at', null)
     .order('name');
 
@@ -226,6 +226,36 @@ export default function Concepts() {
                 </Text>
               </Pressable>
               <Text style={[type.body, { flex: 1, color: c.text }]}>{concept.name}</Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={[type.caption, { color: c.muted, fontWeight: '400' }]}>
+                  Compartido
+                </Text>
+                <Switch
+                  accessibilityLabel={`Compartido: ${concept.name}`}
+                  value={concept.is_shared}
+                  disabled={busy}
+                  trackColor={{ true: c.accent, false: c.line }}
+                  thumbColor={c.surface}
+                  onValueChange={async (isShared) => {
+                    // Flip it now so the switch doesn't snap back while saving; a failed write
+                    // reloads the stored value.
+                    setConcepts((list) =>
+                      list.map((item) =>
+                        item.id === concept.id ? { ...item, is_shared: isShared } : item,
+                      ),
+                    );
+
+                    const saved = await write(() =>
+                      supabase
+                        .from('fixed_concepts')
+                        .update({ is_shared: isShared })
+                        .eq('id', concept.id),
+                    );
+
+                    if (!saved) await load();
+                  }}
+                />
+              </View>
               <IconButton
                 glyph="✎"
                 label={`Renombrar ${concept.name}`}
@@ -240,6 +270,10 @@ export default function Concepts() {
           ))}
         </View>
 
+        <Text style={[type.caption, { color: c.muted, fontWeight: '400' }]}>
+          Un concepto compartido es un gasto que pagás vos para la casa: cada monto que cargues
+          aparece en Compartidos. Cambiarlo afecta solo los montos que cargues desde ahora.
+        </Text>
         <Text style={[type.caption, { color: c.muted, fontWeight: '400' }]}>
           Tocá el círculo para elegir un emoji. Es opcional: sin emoji se muestra la inicial.
         </Text>
