@@ -25,7 +25,7 @@
 | T5  | `t5-shared`         | T2, T3     |
 | T6  | `t6-shared-fixed`   | T4, T5     |
 | T7  | `t7-excel-import`   | T1         |
-| T8  | `t8-release`        | T6         |
+| T8  | `t7-excel-import`   | T6         |
 | T9  | `t7-excel-import`   | T6         |
 
 T1 and T3 can run in parallel; so can T4, T5 and T7.
@@ -469,7 +469,7 @@ current month import as 0 (not paid, shown as `-` on Fijos), so past months don'
 
 ---
 
-### T8 — Release: APK and OTA updates
+### T8 — Release: APK and OTA updates ✅ done
 
 Add `eas.json` with a `preview` profile (`buildType: apk`, channel `preview`) and configure
 `expo-updates`. Create the hosted Supabase project, run the migrations against it, and point the
@@ -483,6 +483,20 @@ _Acceptance_: both phones install the APK and sign in; a visible JS-only change 
 `eas update --branch preview` reaches both phones after reopening the app, without reinstalling;
 Guido's Fijos shows the imported history; lint, format and typecheck pass
 _Commit_: `chore(release): add eas build and update for android`
+
+Done on `t7-excel-import` (2026-11-09). Hosted project `evenly` (São Paulo), migrations applied with
+`supabase db push --remote` (CLI v3 targets the local stack by default). EAS project
+`@gtesolin/evenly`; the `preview` environment holds the three `EXPO_PUBLIC_*` values (the key is the
+new `sb_publishable_…`). Departures: the EAS keystore's SHA-1 went on a **second** Android OAuth
+client, since a client holds one fingerprint; `updates.url` was written by hand instead of
+`update:configure`; the OTA check is a real change, the menu's `Versión 1.0.0 · {update id}`. Also
+the app icon ("Mitades", `assets/images/`, accent `#2F55D4` for adaptive icon and splash). The
+preview APK and the dev build share the package, so a phone holds one at a time.
+
+Measured on production (read-only `supabase db query --remote`): Guido and Sabrina in household
+`Casa`; Guido has 14 concepts (2 archived) with entries and a reference rate for every month from
+2025-08 to 2026-10 (16 months with November). Both phones signed in and received the OTA. After the
+review, EAS manages the Android `versionCode` (`appVersionSource: remote`, `autoIncrement`).
 
 ---
 

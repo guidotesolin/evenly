@@ -271,7 +271,7 @@ selector shows `Noviembre 2026` (capitalized, as a title).
 
 - Tabs: `Fijos`, `Compartidos`
 - Menu (`⋮`, accessibility label `Menú`): sheet title `Evenly` · `Grupo familiar` · `Evolución de fijos` · `Tema` with
-  `Sistema`, `Claro`, `Oscuro` · button `Cerrar sesión` · `Versión {version}`; error
+  `Sistema`, `Claro`, `Oscuro` · button `Cerrar sesión` · `Versión {version}` (plus ` · {update id, 8 chars}` when running an OTA update); error
   `No se pudo cerrar sesión`
 - Month selector accessibility labels: `Mes anterior`, `Mes siguiente`
 
@@ -387,5 +387,16 @@ saldar una parte y el resto queda pendiente.` · field `Fecha` (`Hoy`)
   the build link.
 - EAS Update on the `preview` channel: `eas update --branch preview` ships JS-only changes; a new
   APK is needed only for native changes (new native library, permissions, app config).
-- Google Sign-In needs the APK's signing SHA-1 registered on the Android OAuth client in Google
-  Cloud; the EAS-managed keystore's SHA-1 comes from `eas credentials`.
+- `runtimeVersion` uses the `appVersion` policy: bumping `version` in `app.json` is what marks a
+  native change, so an update never lands on an APK with different native code. Rejected:
+  `fingerprint`, automatic but opaque when a hash differs between this machine and EAS.
+- The preview build and its updates read `EXPO_PUBLIC_*` from EAS's `preview` environment (plain
+  text: they ship inside the APK anyway), pointing at the hosted Supabase project; `.env` stays
+  local and is never uploaded (gitignored files are left out of the EAS build archive).
+- Google Sign-In needs the APK's signing SHA-1 registered in Google Cloud. An Android OAuth client
+  holds one fingerprint, so there are two with the same package: one with the debug keystore's
+  SHA-1 (dev build) and one with the EAS-managed keystore's (expo.dev → Credentials → Android).
+  Never replace the first: the dev build would stop signing in.
+- EAS manages the Android `versionCode` (`appVersionSource: remote`, `autoIncrement` on the
+  `preview` profile), so every APK gets a higher one without touching `app.json`; `version` stays
+  the user-facing number and drives `runtimeVersion`.

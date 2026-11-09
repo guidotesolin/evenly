@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { router, Tabs } from 'expo-router';
+import * as Updates from 'expo-updates';
 import { useRef, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { Button, IconButton, Row, Sheet } from '@/components/ui';
@@ -120,10 +121,13 @@ function HeaderMenu() {
           }}
         />
 
-        {/* ponytail: the binary's version only; once expo-updates lands (T8), add the update id
-            so a JS-only update can be told apart. */}
+        {/* The binary's version, plus the OTA update's short id when one is running, so a
+            JS-only update can be told apart. The bundle inside the APK shows no id. */}
         <Text style={[type.caption, { color: c.muted, fontWeight: '400', textAlign: 'center' }]}>
           Versión {Constants.expoConfig?.version}
+          {!Updates.isEmbeddedLaunch && Updates.updateId
+            ? ` · ${Updates.updateId.slice(0, 8)}`
+            : ''}
         </Text>
       </Sheet>
     </>
