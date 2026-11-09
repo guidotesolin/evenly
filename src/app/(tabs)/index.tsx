@@ -190,7 +190,9 @@ export default function Fixed() {
   const sharers = data?.members.filter((member) => member.active).length ?? 0;
 
   function detailOf(row: FixedRow): string | undefined {
-    const total = row.amount === null ? '' : ` · total ${formatArs(row.amount)}`;
+    // No total for pending or for 0 (not paid): the row already shows `Pendiente` or `-`.
+    const total =
+      row.amount === null || row.amount === 0 ? '' : ` · total ${formatArs(row.amount)}`;
 
     if (row.paidBy !== null) {
       const name = nameOf(row.paidBy);
@@ -288,6 +290,14 @@ export default function Fixed() {
                   right={
                     row.amount === null ? (
                       <PendingChip label="Pendiente" />
+                    ) : row.amount === 0 ? (
+                      // 0 = not paid this month (skipped the gym): settled, not pending.
+                      <Text
+                        accessibilityLabel="No se pagó"
+                        style={[type.body, { color: c.muted, fontWeight: '500' }]}
+                      >
+                        -
+                      </Text>
                     ) : row.share !== null ? (
                       <View style={{ alignItems: 'flex-end' }}>
                         <Money amount={row.share} usdRate={usdRate} style={{ fontWeight: '500' }} />

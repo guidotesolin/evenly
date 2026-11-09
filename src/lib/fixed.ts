@@ -141,3 +141,46 @@ export function monthRows(
 
 /** What a row adds to the month total: my share when split. `null` = pending. */
 export const rowTotal = (row: FixedRow) => (row.amount === null ? null : (row.share ?? row.amount));
+
+/** One of my entries, any month. */
+type MonthEntry = { id: string; month: string; amount: number | null };
+
+/** A derived movement with its date, for Evolución. */
+type DatedMovement = {
+  fixed_entry_id: string | null;
+  paid_by: string;
+  occurred_on: string;
+  my_share: number | null;
+};
+
+/**
+ * Evolución: each month's total, the same sum as the Fijos footer (my amounts, only my share of
+ * the ones the trigger split, plus my share of shared costs others paid; pending adds nothing).
+ * A derived movement always falls in its entry's month. Newest first.
+ */
+export function monthlyTotals(
+  entries: MonthEntry[],
+  movements: DatedMovement[],
+  me: string,
+): { month: string; total: number }[] {
+  const shares = new Map<string, number>();
+  const totals = new Map<string, number>();
+
+  const add = (month: string, amount: number) =>
+    totals.set(month, (totals.get(month) ?? 0) + amount);
+
+  for (const movement of movements) {
+    if (movement.fixed_entry_id === null) continue;
+
+    if (movement.paid_by === me) shares.set(movement.fixed_entry_id, movement.my_share ?? 0);
+    else add(`${movement.occurred_on.slice(0, 7)}-01`, movement.my_share ?? 0);
+  }
+
+  for (const entry of entries) {
+    if (entry.amount !== null) add(entry.month, shares.get(entry.id) ?? entry.amount);
+  }
+
+  return [...totals]
+    .map(([month, total]) => ({ month, total }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
