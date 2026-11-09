@@ -49,3 +49,95 @@ export function monthLabel(month: Date): string {
 
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${month.getFullYear()}`;
 }
+
+/** One of my concepts with this month's entry (`entryId` null = no entry yet). */
+type OwnConcept = {
+  id: string;
+  name: string;
+  emoji: string | null;
+  isShared: boolean;
+  entryId: string | null;
+  amount: number | null;
+};
+
+/** A movement the shared-fixed trigger derived from someone's entry this month. */
+type DerivedMovement = {
+  fixed_entry_id: string | null;
+  paid_by: string;
+  description: string;
+  amount: number;
+  my_share: number | null;
+};
+
+/** Another member's shared concept with no amount yet this month (`pending_shared_concepts`). */
+type PendingShared = { concept_id: string; name: string; owner_id: string };
+
+export type FixedRow = {
+  /** Concept id; for read-only rows, the other member's entry id. */
+  id: string;
+  name: string;
+  emoji: string | null;
+  isShared: boolean;
+  /** Total; `null` = pending. */
+  amount: number | null;
+  /** My part when the amount is split; `null` when it is all mine. */
+  share: number | null;
+  /** Read-only rows: who pays. `null` for my own concepts. */
+  paidBy: string | null;
+};
+
+/**
+ * Fijos rows (ARCHITECTURE.md § Shared fixed costs). An entry of mine is split only if the
+ * trigger derived a movement from it, so toggling `is_shared` never re-splits old amounts; the
+ * share comes from the movement's `my_share`, never recomputed here. Shared costs paid by others
+ * become read-only rows, pending while they have no amount yet. Sorted by name.
+ */
+export function monthRows(
+  concepts: OwnConcept[],
+  movements: DerivedMovement[],
+  pending: PendingShared[],
+  me: string,
+): FixedRow[] {
+  const shares = new Map<string, number>();
+  const others: FixedRow[] = [];
+
+  for (const movement of movements) {
+    if (movement.fixed_entry_id === null) continue;
+
+    if (movement.paid_by === me) shares.set(movement.fixed_entry_id, movement.my_share ?? 0);
+    else {
+      others.push({
+        id: movement.fixed_entry_id,
+        name: movement.description,
+        emoji: null,
+        isShared: true,
+        amount: movement.amount,
+        share: movement.my_share ?? 0,
+        paidBy: movement.paid_by,
+      });
+    }
+  }
+
+  for (const concept of pending) {
+    others.push({
+      id: concept.concept_id,
+      name: concept.name,
+      emoji: null,
+      isShared: true,
+      amount: null,
+      share: null,
+      paidBy: concept.owner_id,
+    });
+  }
+
+  const own = concepts.map(({ entryId, ...concept }) => ({
+    ...concept,
+    share: entryId === null ? null : (shares.get(entryId) ?? null),
+    paidBy: null,
+  }));
+
+  return [...own, ...others].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+/** What a row adds to the month total: my share when split. `null` = pending. */
+export const rowTotal = (row: FixedRow) => (row.amount === null ? null : (row.share ?? row.amount));
