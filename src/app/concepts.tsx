@@ -1,13 +1,18 @@
-import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { Button, IconButton, Input, Screen, Sheet } from '@/components/ui';
+import { Button, IconButton, Input, Row, Screen, Sheet, SubScreenHeader } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 import { radius, space, touch, type, useColors } from '@/theme';
 
 // Conceptos: add, rename, archive, pick an emoji and mark as shared.
 
-type Concept = { id: string; name: string; emoji: string | null; is_shared: boolean };
+type Concept = {
+  id: string;
+  name: string;
+  emoji: string | null;
+  is_shared: boolean;
+  archived_at: string | null;
+};
 
 // ponytail: the emoji field takes any text and stores it trimmed; no single-grapheme check.
 // Add one (Intl.Segmenter) if letters typed there ever become a problem.
@@ -26,8 +31,7 @@ const emojiField = {
 async function fetchConcepts(): Promise<Concept[]> {
   const { data, error } = await supabase
     .from('fixed_concepts')
-    .select('id, name, emoji, is_shared')
-    .is('archived_at', null)
+    .select('id, name, emoji, is_shared, archived_at')
     .order('name');
 
   if (error) throw error;
@@ -37,6 +41,7 @@ async function fetchConcepts(): Promise<Concept[]> {
 
 export default function Concepts() {
   const c = useColors();
+  // Active and archived concepts; the screen splits them.
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [emoji, setEmoji] = useState('');
   const [name, setName] = useState('');
@@ -141,27 +146,12 @@ export default function Concepts() {
     );
   }
 
+  const active = concepts.filter((concept) => concept.archived_at === null);
+  const archived = concepts.filter((concept) => concept.archived_at !== null);
+
   return (
     <Screen edges={['bottom']} style={{ padding: 0, gap: 0 }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'Conceptos',
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: c.bg },
-          headerTitleStyle: type.title,
-          // The native back button can't take a label; this one says "Volver".
-          headerLeft: () => (
-            <IconButton
-              glyph="←"
-              label="Volver"
-              onPress={() => router.back()}
-              size={24}
-              color={c.text}
-            />
-          ),
-        }}
-      />
+      <SubScreenHeader title="Conceptos" />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: space.lg, gap: space.md }}
@@ -183,7 +173,7 @@ export default function Concepts() {
         </View>
 
         <View style={{ borderRadius: radius.field, overflow: 'hidden' }}>
-          {concepts.map((concept) => (
+          {active.map((concept) => (
             <View
               key={concept.id}
               style={{
@@ -282,6 +272,36 @@ export default function Concepts() {
         <Text style={[type.caption, { color: c.muted, fontWeight: '400' }]}>
           Tocá el círculo para elegir un emoji. Es opcional: sin emoji se muestra la inicial.
         </Text>
+
+        {archived.length > 0 && (
+          <View style={{ gap: space.sm, paddingTop: space.md }}>
+            <Text style={[type.caption, { color: c.muted }]}>Archivados</Text>
+            <View style={{ borderRadius: radius.field, overflow: 'hidden' }}>
+              {archived.map((concept) => (
+                <Row
+                  key={concept.id}
+                  icon={concept.emoji ?? concept.name.charAt(0).toUpperCase()}
+                  title={concept.name}
+                  right={
+                    <Button
+                      title="Desarchivar"
+                      variant="text"
+                      disabled={busy}
+                      onPress={() =>
+                        write(() =>
+                          supabase
+                            .from('fixed_concepts')
+                            .update({ archived_at: null })
+                            .eq('id', concept.id),
+                        )
+                      }
+                    />
+                  }
+                />
+              ))}
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       <Sheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="Editar concepto">

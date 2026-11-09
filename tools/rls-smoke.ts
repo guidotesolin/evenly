@@ -223,6 +223,25 @@ if (changed.error) throw changed.error;
 
 assert.deepEqual(await derived(sharedEntry.data.id), [{ amount: 30000, kind: 'expense' }]);
 
+// 0 = not paid this month: no $0 expense in Compartidos.
+const zeroed = await a.client
+  .from('fixed_entries')
+  .update({ amount: 0 })
+  .eq('id', sharedEntry.data.id);
+
+if (zeroed.error) throw zeroed.error;
+
+assert.deepEqual(await derived(sharedEntry.data.id), []);
+
+const restored = await a.client
+  .from('fixed_entries')
+  .update({ amount: 30000 })
+  .eq('id', sharedEntry.data.id);
+
+if (restored.error) throw restored.error;
+
+assert.deepEqual(await derived(sharedEntry.data.id), [{ amount: 30000, kind: 'expense' }]);
+
 const cleared = await a.client
   .from('fixed_entries')
   .update({ amount: null })
@@ -232,7 +251,7 @@ if (cleared.error) throw cleared.error;
 
 assert.deepEqual(await derived(sharedEntry.data.id), []);
 
-console.log('ok 6 shared fixed entry creates, updates and deletes its movement');
+console.log('ok 6 shared fixed entry creates, updates and deletes its movement; 0 has none');
 
 // (7) Clients cannot write trigger-owned movements.
 const forged = await a.client.from('shared_movements').insert({

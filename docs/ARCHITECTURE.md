@@ -104,7 +104,7 @@ the month.
 | `households`        | `name`, `invite_code` (unique, 6 chars)                                                                                                                                                  |                                                                                                                 |
 | `household_members` | `household_id`, `user_id`, `joined_on` (date), `left_on` (date, null)                                                                                                                    | v1: a user belongs to at most one household at a time (partial unique index on `user_id where left_on is null`) |
 | `fixed_concepts`    | `owner_id`, `name`, `emoji` (text, null; added by T4), `is_shared` (bool), `archived_at` (null)                                                                                          | Private to the owner                                                                                            |
-| `fixed_entries`     | `concept_id`, `month` (date), `amount` (bigint, **null = pending**); unique (`concept_id`, `month`)                                                                                      | Private to the owner (through the concept)                                                                      |
+| `fixed_entries`     | `concept_id`, `month` (date), `amount` (bigint, **null = pending**, 0 = not paid that month); unique (`concept_id`, `month`)                                                             | Private to the owner (through the concept)                                                                      |
 | `reference_rates`   | `owner_id`, `month`, `ars_per_usd` (numeric); unique (`owner_id`, `month`)                                                                                                               | Private to the owner                                                                                            |
 | `shared_movements`  | `household_id`, `kind` (`expense` \| `reimbursement`), `paid_by`, `paid_to` (null for expenses), `description`, `amount` (bigint), `occurred_on` (date), `fixed_entry_id` (unique, null) | Visible to household members. Rows with `fixed_entry_id` are owned by the trigger, not editable from the app    |
 
@@ -155,7 +155,8 @@ electricity, Sabrina pays internet).
   `occurred_on` = today clamped into the entry's month (`greatest(month, least(current_date,
 month + 1 month − 1 day))`), so the movement always falls in the entry's month. Rejected: doing
   it in app code, because two writes from the phone can half-fail and leave the screens out of sync.
-- An entry with `amount = null` has no movement. Toggling `is_shared` only affects entries written
+- An entry with `amount = null` or `0` (not paid that month) has no movement
+  (`20261110000000_zero_amount_no_movement.sql`), so a skipped month never shows as a $0 expense. Toggling `is_shared` only affects entries written
   after the change; existing movements stay, because they may already be settled. The fixed screen
   says so when toggling.
 - On the owner's **Fixed** screen the row shows the **total and "my share"** (total /
@@ -199,13 +200,19 @@ Two tabs (`expo-router` tabs), plus sign-in and household setup outside the tabs
    my share; read-only rows for shared costs paid by others; footer with the month total in ARS
    and USD and how many are still pending. **A new month starts with the same concepts and empty
    amounts — no reference to last month's values.** Manage concepts: add, rename, toggle shared,
-   archive. No reordering in v1 (sorted by name).
+   archive, unarchive. No reordering in v1 (sorted by name). **Evolución** (from the menu): every
+   month's total, newest first, with a bar per month and the USD estimate where the month has a
+   rate, the current month marked as in progress (grey bar) since it still has pending amounts; the same sum as the footer (`monthlyTotals` in `src/lib/fixed.ts`).
 4. **Shared** (`Compartidos`): modelled on the current Tricount screen — header with "My
    expenses" (my shares) and "Total expenses" for the selected month; balance card ("Sabrina te
    debe $X" / "Le debés $X a Sabrina"); list grouped by day, each row with description, "paid by
    X" or "transferred by X", and amount; floating "add expense" button; "Settle" action. Add/edit
    form: description, amount, date (default today), paid by (default me). Any member can edit or
    delete any manual movement; derived ones link to the fixed screen instead.
+5. **Menu** (`⋮` in both tabs, a bottom sheet): **Grupo familiar** (a screen with the household
+   name, its active members and the invite code, shared through Android's share sheet),
+   **Evolución de fijos** (kept out of the Fijos header, which had no room for a second action), **Tema**
+   (Sistema / Claro / Oscuro), **Cerrar sesión**, and the app version.
 
 ## Design and UI copy
 
@@ -216,7 +223,9 @@ artifact's Share menu.
 Look ("Libreta"): quiet surfaces, big tabular numbers, one blue accent and orange for what is
 pending or owed (blue/orange rather than green/red, so it reads with colour blindness). Roboto,
 Android's system font, so no font is bundled. Light and dark follow the system
-(`userInterfaceStyle: automatic` + `useColorScheme`).
+(`userInterfaceStyle: automatic` + `useColorScheme`) unless the menu's Tema overrides it:
+`Appearance.setColorScheme`, so native dialogs follow too, with the choice kept in SecureStore and
+applied at startup.
 
 - **Theme**: `src/theme.ts` — colours (`useColors()`), `space`, `radius`, `touch` (48),
   `type` scale, and `useNavigationTheme()` for headers and tab bar. Every colour pair passes 4.5:1.
@@ -261,7 +270,8 @@ selector shows `Noviembre 2026` (capitalized, as a title).
 **Tabs and menu**
 
 - Tabs: `Fijos`, `Compartidos`
-- Menu (`⋮`, accessibility label `Menú`): title `Evenly`, `Cerrar sesión`, `Cancelar`; error
+- Menu (`⋮`, accessibility label `Menú`): sheet title `Evenly` · `Grupo familiar` · `Evolución de fijos` · `Tema` with
+  `Sistema`, `Claro`, `Oscuro` · button `Cerrar sesión` · `Versión {version}`; error
   `No se pudo cerrar sesión`
 - Month selector accessibility labels: `Mes anterior`, `Mes siguiente`
 
@@ -275,7 +285,8 @@ selector shows `Noviembre 2026` (capitalized, as a title).
   estimate (`≈ US$ …`) and the line under the total shows the pesos.
 - Row details: `Compartido · total {$ total}` with `tu parte` under the amount; read-only:
   `Pagó {name} · total {$ total}`, or `Paga {name}` while it has no amount; no amount:
-  `Pendiente`
+  `Pendiente`; amount 0 (not paid that month, e.g. skipped the gym; typed as `0`): `-`, a11y
+  `No se pagó`, neither pending nor added
 - Footer: `Total del mes` · `{$ total}` · `≈ {US$ total}` (omitted without a rate) ·
   `{n} pendiente` / `{n} pendientes`
 - Amount sheet: title `{emoji} {concept}` · `{month} · Compartido` (or just `{month}`) · field
@@ -296,6 +307,7 @@ aparece en Compartidos. Cambiarlo afecta solo los montos que cargues desde ahora
   `Nombre` · button `Guardar`
 - Archive confirm: `¿Archivar {name}?` · `Deja de aparecer en los meses nuevos. Los montos
 cargados se conservan.` · `Archivar`, `Cancelar`
+- Archived section: `Archivados` · button `Desarchivar`
 
 **Compartidos**
 
@@ -307,6 +319,21 @@ cargados se conservan.` · `Archivar`, `Cancelar`
   rows carry the chip `Fijo`; a settle row's description is `Reembolso`
 - Floating button: `Agregar gasto`
 - Tapping a reimbursement: `¿Eliminar este reembolso?` · `Eliminar`, `Cancelar`
+
+**Evolución**
+
+- Title `Evolución` · back accessibility label `Volver`
+- Row: `{Month YYYY}` · `{$ total}` · `{≈ US$ total}` (omitted without a rate); the current
+  month adds `· En curso`; accessibility label `{Month YYYY}: {$ total}` (`{Month YYYY}, en curso:
+{$ total}`)
+- Empty: `Todavía no hay montos cargados.`
+
+**Grupo familiar**
+
+- Title `Grupo familiar` · back accessibility label `Volver`
+- `{household name}` · `Integrantes` · rows `{name}`, mine `{name} (vos)`
+- `Código de invitación` · `{code}` · `Mantené presionado para copiarlo.` · button
+  `Compartir código`, which shares `Sumate a {household name} en Evenly con el código {code}`
 
 **Expense form**
 
@@ -339,9 +366,19 @@ saldar una parte y el resto queda pendiente.` · field `Fecha` (`Hoy`)
 - Month headers have no year; the first column is August 2025 and each next column is the next
   month.
 - Every row except `Total` becomes a `fixed_concept` (not shared: history holds Guido's own
-  amounts, already halved where it applied). `-` or empty = no entry for that month. Amounts are
+  amounts, already halved where it applied). `-` or empty before the current month = 0 (not paid);
+  from the current month on = no entry (pending in the app). Those zeros only fill months with
+  no entry, so a later re-run never blanks an amount typed in the app. Amounts are
   rounded to whole pesos. The `Valor dolar` row becomes `reference_rates`.
-- Idempotent: re-running it upserts by (`concept`, `month`), never duplicates.
+- Idempotent: re-running it upserts by (`concept`, `month`), never duplicates. Concepts are
+  matched by exact name among the user's concepts (archived included), so ones created in the app
+  are reused. A match with a shared concept stops the run before writing: the trigger would turn
+  every past month into a Compartidos expense.
+- Cells use the US separators Google Sheets exports (`$1,757,740.11`): thousands need commas and
+  decimals stop at two digits, so es-AR `1.450` fails rather than importing 1.45; anything else fails the run
+  naming the row and month. A month header out of sequence also fails, rather than shifting every
+  amount. `Valor dolar` is read from whichever sheet has it, and it is the only row read from the
+  dollars sheet (the rest are formulas that can export as `#VALUE!`); rates keep their decimals.
 - Writes with the service role key to the user given by `--email`.
 
 ## Distribution

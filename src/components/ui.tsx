@@ -1,4 +1,5 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { router, Stack } from 'expo-router';
 import type { ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
@@ -365,6 +366,63 @@ export function IconButton({
     >
       <Text style={{ fontSize: size, lineHeight: size + 4, color: color ?? c.muted }}>{glyph}</Text>
     </Pressable>
+  );
+}
+
+/** The household invite code, big enough to read out, long-press to copy (setup and Grupo familiar). */
+export function InviteCode({ code, children }: { code: string; children?: ReactNode }) {
+  const c = useColors();
+
+  return (
+    <Card>
+      <Text style={[type.caption, { color: c.muted, textAlign: 'center' }]}>
+        Código de invitación
+      </Text>
+      <Text
+        selectable
+        style={{
+          fontSize: 40,
+          lineHeight: 48,
+          fontWeight: '700',
+          letterSpacing: 8,
+          textAlign: 'center',
+          color: c.text,
+        }}
+      >
+        {code}
+      </Text>
+      <Text style={[type.caption, { color: c.muted, textAlign: 'center', fontWeight: '400' }]}>
+        Mantené presionado para copiarlo.
+      </Text>
+      {children}
+    </Card>
+  );
+}
+
+/** Header of a screen pushed over the tabs (Conceptos, Grupo familiar, Evolución). */
+export function SubScreenHeader({ title }: { title: string }) {
+  const c = useColors();
+
+  return (
+    <Stack.Screen
+      options={{
+        headerShown: true,
+        title,
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: c.bg },
+        headerTitleStyle: type.title,
+        // The native back button can't take a label; this one says "Volver".
+        headerLeft: () => (
+          <IconButton
+            glyph="←"
+            label="Volver"
+            onPress={() => router.back()}
+            size={24}
+            color={c.text}
+          />
+        ),
+      }}
+    />
   );
 }
 
