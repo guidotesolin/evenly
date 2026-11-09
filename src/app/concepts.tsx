@@ -13,6 +13,16 @@ type Concept = { id: string; name: string; emoji: string | null; is_shared: bool
 // Add one (Intl.Segmenter) if letters typed there ever become a problem.
 const emojiOrNull = (text: string) => text.trim() || null;
 
+// A 22 pt emoji overflows the body line height and Android grows the field past its neighbours:
+// pin it to the inputs' height.
+const emojiField = {
+  height: touch,
+  paddingHorizontal: 0,
+  paddingVertical: 0,
+  textAlign: 'center',
+  fontSize: 22,
+} as const;
+
 async function fetchConcepts(): Promise<Concept[]> {
   const { data, error } = await supabase
     .from('fixed_concepts')
@@ -158,12 +168,7 @@ export default function Concepts() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
           <View style={{ width: 56 }}>
-            <Input
-              label="Emoji"
-              value={emoji}
-              onChangeText={setEmoji}
-              style={{ paddingHorizontal: 0, textAlign: 'center', fontSize: 22 }}
-            />
+            <Input label="Emoji" value={emoji} onChangeText={setEmoji} style={emojiField} />
           </View>
           <View style={{ flex: 1 }}>
             <Input
@@ -289,7 +294,7 @@ export default function Concepts() {
               value={newEmoji}
               onChangeText={setNewEmoji}
               autoFocus={editing?.focus === 'emoji'}
-              style={{ paddingHorizontal: 0, textAlign: 'center', fontSize: 22 }}
+              style={emojiField}
             />
           </View>
           <View style={{ flex: 1 }}>
