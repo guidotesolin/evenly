@@ -288,6 +288,14 @@ export default function Fixed() {
                   right={
                     row.amount === null ? (
                       <PendingChip label="Pendiente" />
+                    ) : row.amount === 0 ? (
+                      // 0 = not paid this month (skipped the gym): settled, not pending.
+                      <Text
+                        accessibilityLabel="No se pagó"
+                        style={[type.body, { color: c.muted, fontWeight: '500' }]}
+                      >
+                        -
+                      </Text>
                     ) : row.share !== null ? (
                       <View style={{ alignItems: 'flex-end' }}>
                         <Money amount={row.share} usdRate={usdRate} style={{ fontWeight: '500' }} />
