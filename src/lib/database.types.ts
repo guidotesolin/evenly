@@ -139,9 +139,9 @@ isOneToOne: false
                   ]
                 },"shared_movements": {
                   Row: {
-                    "amount": number,"created_at": string,"description": string,"fixed_entry_id": string | null,"household_id": string,"id": string,"kind": string,"occurred_on": string,"paid_by": string,"paid_to": string | null
+                    "amount": number,"created_at": string,"description": string,"fixed_entry_id": string | null,"household_id": string,"id": string,"kind": string,"occurred_on": string,"paid_by": string,"paid_to": string | null,"my_share": number | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "my_share"
                   Insert: {
                     "amount": number,"created_at"?: string,"description": string,"fixed_entry_id"?: string | null,"household_id": string,"id"?: string,"kind": string,"occurred_on"?: string,"paid_by": string,"paid_to"?: string | null
                   }
@@ -233,6 +233,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"my_share":
+{ Args: { "movement": Omit<Database["public"]['Tables']["shared_movements"]['Row'], Database["public"]['Tables']["shared_movements"]['ComputedFields']> }; Returns: number
+                           },
 "participant_count":
 { Args: { "on_date": string,"target_household": string }; Returns: number
                            }

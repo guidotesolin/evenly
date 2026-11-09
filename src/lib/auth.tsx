@@ -62,6 +62,38 @@ async function fetchHouseholdId(userId: string): Promise<string | null> {
   return data?.household_id ?? null;
 }
 
+export type Member = { id: string; name: string; active: boolean };
+
+// ponytail: one cached list, refreshed by every fetch; the Compartidos tab fetches on each focus,
+// so the expense form opened from it reads this instead of fetching again.
+let cache: { householdId: string; members: Member[] } | null = null;
+
+/** The last `fetchMembers` result for this household, if any. */
+export function cachedMembers(householdId: string): Member[] | null {
+  return cache?.householdId === householdId ? cache.members : null;
+}
+
+/** Everyone who ever joined the household (old movements name them), with their first name. */
+export async function fetchMembers(householdId: string): Promise<Member[]> {
+  const { data, error } = await supabase
+    .from('household_members')
+    .select('user_id, left_on, profiles(display_name)')
+    .eq('household_id', householdId);
+
+  if (error) throw error;
+
+  const members = data.map((row) => ({
+    id: row.user_id,
+    // "Pagó Sabrina", not the full Google name.
+    name: row.profiles.display_name.trim().split(/\s+/)[0] || row.profiles.display_name,
+    active: row.left_on === null,
+  }));
+
+  cache = { householdId, members };
+
+  return members;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [membership, setMembership] = useState<Membership | null>(null);

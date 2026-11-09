@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@react-native-community/datetimepicker": "9.2.1",
     "@react-native-google-signin/google-signin": "^17.0.0",
     "@supabase/supabase-js": "^2.118.0",
     "expo": "~58.0.23",
@@ -43,7 +44,8 @@
     "format": "prettier --write .",
     "rls:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/rls-smoke.ts",
     "db:types": "supabase gen types typescript > src/lib/database.types.ts",
-    "fixed:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/fixed-smoke.ts"
+    "fixed:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/fixed-smoke.ts",
+    "shared:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/shared-smoke.ts"
   },
   "private": true
 }
