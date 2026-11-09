@@ -113,8 +113,9 @@ things have to exist before the sign-in button works:
      With the SDK 58 template it is `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`
      (shared by every Expo project, which is fine for a dev build).
 
-     The EAS build (T8) signs with the EAS-managed keystore: `npx eas-cli credentials` prints its
-     SHA-1. Add it as a second fingerprint on the same Android client.
+     The EAS build signs with the EAS-managed keystore, which has its own SHA-1 (see
+     [Distribution](#distribution)). An Android client holds a single fingerprint, so that one
+     gets a second Android client with the same package.
 
    Nothing from the Android client goes into the code: Google matches it by package and SHA-1.
 
@@ -153,6 +154,82 @@ one account (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#spreadsheet-import)). Th
    ```bash
    npm run import -- --email you@gmail.com --pesos data/pesos.csv --dollars data/dolares.csv
    ```
+
+## Distribution
+
+The phones run an APK built by EAS Build (`preview` profile in `eas.json`) against the hosted
+Supabase project. JavaScript changes reach them over the air through EAS Update (`expo-updates`,
+channel `preview`); no Play Store.
+
+### One-time setup
+
+1. **Hosted Supabase.** Create a project at [supabase.com](https://supabase.com/dashboard) (free
+   plan), then apply the migrations to it:
+
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <project-ref>
+   npx supabase db push --remote   # CLI v3 targets the local stack unless told otherwise
+   ```
+
+   In the dashboard, Authentication → Sign In / Providers → Google: enable it and paste the
+   **Web** client ID and secret.
+
+2. **Expo project.** Create a free account at [expo.dev](https://expo.dev). In a fork, first
+   delete `owner`, `extra.eas` and `updates` from `app.json`: they point at the maintainer's EAS
+   project. Then:
+
+   ```bash
+   npx eas-cli@latest login
+   npx eas-cli@latest init               # adds extra.eas.projectId to app.json
+   npx eas-cli@latest update:configure   # adds updates.url to app.json
+   ```
+
+3. **Build environment.** The APK reads the hosted project, not `.env`: set the three public
+   variables on EAS's `preview` environment. The key is the **publishable** key (`sb_publishable_…`,
+   Project Settings → API Keys in the Supabase dashboard; it replaces the legacy anon key, and the
+   variable keeps its old `ANON_KEY` name). They ship inside the app, so plain text is fine:
+
+   ```bash
+   npx eas-cli@latest env:set --environment preview --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value https://<project-ref>.supabase.co
+   npx eas-cli@latest env:set --environment preview --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <publishable-key>
+   npx eas-cli@latest env:set --environment preview --visibility plaintext --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --value <web-client-id>
+   ```
+
+4. **Signing SHA-1.** The first build creates an EAS-managed keystore; its SHA-1 is on
+   expo.dev → the project → Credentials → Android. In Google Cloud create a **second Android
+   OAuth client** (same package, that SHA-1); keep the debug one for the dev build. Until then
+   sign-in fails with `DEVELOPER_ERROR`. While the OAuth app is in Testing mode, every account that signs in must be
+   listed as a test user.
+
+### Building and installing
+
+```bash
+npx eas-cli@latest build --profile preview --platform android
+```
+
+It runs in Expo's cloud (free tier: low-priority queue). When it finishes it prints a link and a
+QR code: open it on each phone, download the APK and install it (Android asks to allow installs
+from the browser once).
+
+### Publishing an update
+
+```bash
+npx eas-cli@latest update --branch preview --environment preview --message "what changed"
+```
+
+The phones download it in the background and apply it **the next time the app is opened after
+closing it fully**. With SDK 55+ the update takes its variables only from the EAS environment,
+never from `.env`.
+
+### When a new APK is needed
+
+An update can only change JavaScript and assets. Anything native needs a new build: a library with
+native code, `app.json` changes (icon, splash, permissions, plugins) or an Expo SDK upgrade. Bump
+`version` in `app.json` first: `runtimeVersion` follows it (`appVersion` policy), so the new APK
+stops accepting updates built for the old native code, and vice versa. The Android `versionCode`
+is incremented by EAS on every build, so a newer APK always installs over the old one, keeping the
+session and data.
 
 ## Checks
 
