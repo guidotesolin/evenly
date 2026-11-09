@@ -386,6 +386,53 @@ her 13.000 in her total; Guido changes it to 30.000 → all three places update;
 amount → the movement disappears
 _Commit_: `feat(fixed): split shared fixed costs into the household`
 
+#### Where it departed from the plan
+
+- No migration and no new writes: the T1 trigger already did the work. Fijos reads one more
+  query, the month's derived `shared_movements` with `my_share` (T5's computed field), and
+  `monthRows` (`src/lib/fixed.ts`) builds the rows from it, so the split rule stays in SQL.
+- An entry of mine shows as split only when the trigger derived a movement from it, not from the
+  concept's current `is_shared`: an amount entered before the toggle stays whole, one entered
+  after it is split, matching "only from now on" both ways. The amount sheet's subtitle
+  (`· Compartido`) and hint do follow the current flag, since they describe the next save.
+- The sheet hint divides by today's active members (`ponytail:` in `src/app/(tabs)/index.tsx`);
+  the saved row shows the movement's own share. They differ only in a month someone joined or
+  left.
+- Read-only rows are named by the movement's `description` (the concept name when the amount was
+  saved); a later rename on the payer's phone doesn't reach them, like on Compartidos.
+- The `Compartido` switch sits on each Conceptos row with its caption above it; the note joins
+  the emoji note under the list. The switch saves on toggle, with no confirm.
+
+#### What ran
+
+- `npm run fixed:smoke`: `ok fixed` (new cases: a shared row with its movement, a shared one
+  entered before the toggle, a read-only row, the total adding only shares).
+- A throwaway script against the local stack (deleted after) ran the screen's exact queries with
+  two users: Guido marks Luz shared and enters 26.000 → his Fijos 26.000 / share 13.000, total
+  13.000; Sabrina's Fijos a read-only Luz with 13.000 in her total, her Compartidos `Luz` paid by
+  Guido, balance ±13.000, and she can't read Guido's concepts; 30.000 → 15.000 everywhere;
+  cleared → pending for Guido, gone for Sabrina and from Compartidos; unshared and re-entered →
+  whole again.
+- `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
+- `npx expo export --platform android`: Hermes bundle built.
+- Asked during phone acceptance: the amount sheet has the `Compartido` switch too (it saves the
+  concept at once, the sheet stays open), and the other member's shared concepts with no amount
+  yet show as pending read-only rows (`Paga {name}`) in their Fijos and pending count. Migration
+  `20261109000000_pending_shared_concepts.sql` adds `pending_shared_concepts(month)` (`security
+definer`, returns only name and owner of the household's shared concepts still pending);
+  `ponytail:` there for past months. Applied with `npx supabase migration up`; `db:types`
+  regenerated. `rls:smoke` gains (8): a member sees the other's pending shared concepts and none
+  of the private ones, the owner and an outsider see nothing, an amount takes it off the list.
+- Code review (high) found 6 issues; 4 applied: the switch's accessibility label names the
+  concept (`Compartido: {name}`, new copy), the switch flips at once instead of snapping back
+  until the reload, the shared hint hides for 0, and `fetchMonth` takes the month's `Date`.
+  Skipped: refetching members on each focus (one small query). Left as a known rare case, by
+  the maintainer's call: after a concept is unshared, editing an amount that was already shared
+  doesn't touch its movement (the T1 trigger returns early), so that row shows the new total
+  with the old share and Compartidos keeps the old amount. Re-ran `fixed:smoke`, lint, format and
+  typecheck.
+- Not yet: phone acceptance on two phones.
+
 ---
 
 ### T7 — Spreadsheet import

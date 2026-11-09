@@ -165,6 +165,13 @@ month + 1 month − 1 day))`), so the movement always falls in the entry's month
   their month total (this is how internet appears in Guido's spreadsheet since August 2026). These
   rows are read from `shared_movements where fixed_entry_id is not null and paid_by <> me` for the
   month, so the private `fixed_*` tables never leak.
+- A shared concept is a monthly household cost, so while its owner hasn't entered the month's
+  amount it shows as a **pending read-only row** ("paga X") on the other members' Fixed screens
+  and counts in their pending total. Those rows come from `pending_shared_concepts(month)`, a
+  `security definer` function that returns only the name and owner of the active, shared,
+  non-archived concepts of the caller's household members with no amount that month; nothing
+  else of `fixed_*` is exposed. Known ceiling: there is no record of when a concept became
+  shared, so one shared today also shows as pending in past months.
 
 ### Row Level Security
 
@@ -267,11 +274,12 @@ selector shows `Noviembre 2026` (capitalized, as a title).
   `ARS` · `USD` (a11y: `Ver en pesos` · `Ver en dólares`). In `USD` the rows and total show the
   estimate (`≈ US$ …`) and the line under the total shows the pesos.
 - Row details: `Compartido · total {$ total}` with `tu parte` under the amount; read-only:
-  `Pagó {name} · total {$ total}`; no amount: `Pendiente`
+  `Pagó {name} · total {$ total}`, or `Paga {name}` while it has no amount; no amount:
+  `Pendiente`
 - Footer: `Total del mes` · `{$ total}` · `≈ {US$ total}` (omitted without a rate) ·
   `{n} pendiente` / `{n} pendientes`
 - Amount sheet: title `{emoji} {concept}` · `{month} · Compartido` (or just `{month}`) · field
-  `Monto` · shared hint `Al ser compartido, se suma a Compartidos como gasto pagado por vos. Tu
+  `Monto` · switch `Compartido` (same as in Conceptos) · shared hint `Al ser compartido, se suma a Compartidos como gasto pagado por vos. Tu
 parte: {$ share}.` · buttons `Dejar pendiente`, `Guardar`
 - Rate sheet: title `Dólar de referencia` · `{month}` · field `Pesos por dólar` · button `Guardar`
 
@@ -279,8 +287,8 @@ parte: {$ share}.` · buttons `Dejar pendiente`, `Guardar`
 
 - Title `Conceptos` · back accessibility label `Volver`
 - New: field `Emoji` · field `Nuevo concepto` (placeholder `Ej.: Gimnasio`) · button `Agregar`
-- Row: switch `Compartido` · accessibility labels `Cambiar emoji de {name}`, `Renombrar {name}`,
-  `Archivar {name}`
+- Row: switch `Compartido` · accessibility labels `Compartido: {name}`, `Cambiar emoji de {name}`,
+  `Renombrar {name}`, `Archivar {name}`
 - Notes: `Un concepto compartido es un gasto que pagás vos para la casa: cada monto que cargues
 aparece en Compartidos. Cambiarlo afecta solo los montos que cargues desde ahora.` ·
   `Tocá el círculo para elegir un emoji. Es opcional: sin emoji se muestra la inicial.`
