@@ -529,4 +529,4 @@ who it belongs to. Shortcuts inside code are `ponytail:` comments instead.
 
 | ID  | What                                    | Why it was left                                             | Belongs to                          |
 | --- | --------------------------------------- | ----------------------------------------------------------- | ----------------------------------- |
-| B1  | Import Sabrina's fixed-cost spreadsheet | Not known yet whether she has one; T7's script may cover it | When Sabrina shares her spreadsheet |
+| B1  | Import Sabrina's fixed-cost spreadsheet | ✅ done 2026-11-09: one sheet per month (June–November 2026), es-AR amounts, no `Valor dolar`, so not T7's script; a one-off SQL insert against production. 9 concepts, 53 entries, totals as paid (not halved); her shared `Flow` left without history | — |
