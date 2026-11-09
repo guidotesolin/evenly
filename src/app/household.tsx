@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, ScrollView, Text, View } from 'react-native';
 import { Button, Card, Input, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -93,50 +93,63 @@ export default function HouseholdSetup() {
   }
 
   return (
-    <Screen style={{ padding: space.xl, gap: space.xl }}>
-      <View style={{ gap: space.sm, paddingTop: space.xxl }}>
-        <Text accessibilityRole="header" style={[type.title, { color: c.text }]}>
-          Tu grupo familiar
-        </Text>
-        <Text style={[type.body, { color: c.muted }]}>
-          Creá un grupo nuevo o unite a uno con el código que te pasaron.
-        </Text>
-      </View>
+    <Screen style={{ padding: 0, gap: 0 }}>
+      {/* Edge-to-edge Android doesn't resize for the keyboard: without this, the keyboard covers
+          the join code field and its button. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: space.xl, gap: space.xl }}
+        >
+          <View style={{ gap: space.sm, paddingTop: space.xxl }}>
+            <Text accessibilityRole="header" style={[type.title, { color: c.text }]}>
+              Tu grupo familiar
+            </Text>
+            <Text style={[type.body, { color: c.muted }]}>
+              Creá un grupo nuevo o unite a uno con el código que te pasaron.
+            </Text>
+          </View>
 
-      <Card>
-        <Text style={[type.body, { fontWeight: '500', color: c.text }]}>Crear un grupo nuevo</Text>
-        <Input
-          label="Nombre del grupo"
-          placeholder="Ej.: Casa"
-          value={name}
-          onChangeText={setName}
-        />
-        <Button title="Crear grupo" onPress={create} disabled={busy || !name.trim()} />
-      </Card>
+          <Card>
+            <Text style={[type.body, { fontWeight: '500', color: c.text }]}>
+              Crear un grupo nuevo
+            </Text>
+            <Input
+              label="Nombre del grupo"
+              placeholder="Ej.: Casa"
+              value={name}
+              onChangeText={setName}
+            />
+            <Button title="Crear grupo" onPress={create} disabled={busy || !name.trim()} />
+          </Card>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <View style={{ flex: 1, height: 1, backgroundColor: c.line }} />
-        <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>o</Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: c.line }} />
-      </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: c.line }} />
+            <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>o</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: c.line }} />
+          </View>
 
-      <Card>
-        <Text style={[type.body, { fontWeight: '500', color: c.text }]}>Unirme con un código</Text>
-        <Input
-          label="Código de invitación"
-          placeholder="ABC123"
-          value={code}
-          onChangeText={setCode}
-          autoCapitalize="characters"
-          style={{ fontSize: 18, fontWeight: '500', letterSpacing: 4 }}
-        />
-        <Button
-          title="Unirme"
-          variant="secondary"
-          onPress={join}
-          disabled={busy || code.trim().length < 6}
-        />
-      </Card>
+          <Card>
+            <Text style={[type.body, { fontWeight: '500', color: c.text }]}>
+              Unirme con un código
+            </Text>
+            <Input
+              label="Código de invitación"
+              placeholder="ABC123"
+              value={code}
+              onChangeText={setCode}
+              autoCapitalize="characters"
+              style={{ fontSize: 18, fontWeight: '500', letterSpacing: 4 }}
+            />
+            <Button
+              title="Unirme"
+              variant="secondary"
+              onPress={join}
+              disabled={busy || code.trim().length < 6}
+            />
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
