@@ -290,7 +290,7 @@ _Commit_: `feat(fixed): add monthly fixed costs screen`
 
 ---
 
-### T5 — Shared screen
+### T5 — Shared screen ✅ done
 
 Build the **Compartidos** tab as specified in ARCHITECTURE.md `## Screens` (4), `### Balances`
 and `### Settling`, with the T3 design and copy: month selector, header with "my expenses" (sum of
@@ -306,6 +306,66 @@ _Acceptance_: with both phones: A adds an expense of 20.000, B sees it and the b
 10.000"; B settles 4.000 → balance 6.000; B settles the rest → 0 and a reimbursement row appears
 under today; editing and deleting a manual expense updates both phones' balance after refresh
 _Commit_: `feat(shared): add shared expenses screen with settle`
+
+#### Where it departed from the plan
+
+- "Mis gastos" needs each expense's share by date. A migration adds `my_share(shared_movements)`,
+  a PostgREST computed field over `household_participants` / `participant_count`, so the split
+  rule stays in SQL only. Applied with `npx supabase migration up` (no reset).
+- `Fecha` (`DaySelector`) is the design's button: it opens Android's calendar dialog through
+  `@react-native-community/datetimepicker` (`DateTimePickerAndroid.open`), Expo's recommended
+  picker. Its config plugin joined `app.json`. **Native dependency: the dev build must be rebuilt**
+  (`npm run android`). The first delivery shipped a ‹ › day stepper to avoid the rebuild; the
+  maintainer asked for the calendar during phone acceptance.
+- Settle works out the counterpart with `settleWith` (`src/lib/shared.ts`): the other active
+  member furthest the other way, exact for two members; a third needs the picker from
+  ARCHITECTURE.md § Settling (`ponytail:` comment).
+- Names are the first word of the Google display name (`Pagó Ana`). `fetchMembers` lives in
+  `src/lib/auth.tsx` next to the membership read, shared by the screen and the form.
+- The expense form is its own route (`src/app/expense.tsx`, like the design), settle is a `Sheet`
+  on the tab. Tapping a reimbursement offers to delete it (new copy `¿Eliminar este
+reembolso?`): a wrong settle can be undone; editing one isn't in scope.
+- A derived movement opens the form read-only with `Viene de Fijos: se edita desde ahí.` (new
+  copy; the card asked for a note without a string).
+- `es-AR` dates come out of ICU as `lunes, 2 de noviembre`; `dayLabel` drops the comma to match
+  the approved copy.
+- `shared:smoke` is not added to CI, like `fixed:smoke`: CI only runs `rls:smoke`.
+
+#### What ran
+
+- `npx supabase migration up` applied `20261106000000_movement_share.sql`; `npm run db:types`
+  regenerated the types (`my_share` appears as a computed field).
+- `npm run shared:smoke`: `ok shared`. `npm run fixed:smoke`: `ok fixed`. `npm run rls:smoke`:
+  `ok 1` … `ok 7`.
+- A throwaway script against the local stack (deleted after) ran the screen's exact queries with
+  two users: A adds 20.000 → B sees balance −10.000 and "Mis gastos" 10.000; B settles 4.000 →
+  6.000; B settles 6.000 → 0, two reimbursements today; B edits A's expense to 30.000 → A's
+  balance 5.000; B deletes it → −10.000 and empty totals.
+- `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
+- `npx expo export --platform android`: Hermes bundle built.
+- Code review (high) found 9 issues; all applied: no expense on a day with zero participants
+  (it credited the payer with nobody owing it), writes use `.select('id')` so a write RLS
+  filters to zero rows is reported instead of closing as saved, the form avoids the keyboard,
+  the split hint ignores answers for a day already stepped past, edit fields stay locked until
+  the stored values load, only active members can be picked as payer (RLS), the form reads the
+  members the tab just fetched (`cachedMembers`, `ponytail:` in `src/lib/auth.tsx`), first names
+  trim whitespace, and `settleWith` is deterministic at a zero balance. Re-ran the smokes, lint,
+  format, typecheck, the Android export, and a throwaway script confirming a write to a deleted
+  movement returns no error and zero rows, and `participant_count` before the household is 0.
+- Found during phone acceptance: on household setup the keyboard covered the join code field.
+  The screen now scrolls inside a `KeyboardAvoidingView`, like the expense form.
+- Asked during phone acceptance: no movement dated after today. The calendar's `maximumDate` is
+  today (expense form and settle sheet); disabled `IconButton`s now dim. App-only on purpose: a
+  database check would break the shared-fixed trigger, which dates next month's entries ahead.
+- After the calendar: lint, format, typecheck, `shared:smoke`, the Android export and
+  `npx expo-doctor` (20/20) pass. Not yet seen on the phone: it needs the rebuilt dev build.
+- Phone acceptance by the maintainer on the Redmi, with the dev build rebuilt for the calendar:
+  expense of 20.000 → the other account owes 10.000; settle 4.000 → 6.000; settle the rest → a
+  mano with the reimbursements under today; edit and delete updated both accounts' balance after
+  refresh. Keyboard on household setup and the calendar came from that check.
+- Also from that check: the tab buttons' ripple spread as a large circle past the small labels
+  (expo-router hardcodes a borderless ripple). `tabBarButton` is now a plain `Pressable` whose
+  ripple fills the tab. Lint and typecheck pass; not yet seen on the phone.
 
 ---
 
