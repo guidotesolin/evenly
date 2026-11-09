@@ -3,13 +3,16 @@
     "name": "Evenly",
     "slug": "evenly",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "evenly",
     "userInterfaceStyle": "automatic",
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#2F55D4",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -22,7 +25,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#2F55D4",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -34,6 +37,15 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "platforms": ["android"]
+    "platforms": ["android"],
+    "extra": {
+      "eas": {
+        "projectId": "38af2c40-5e89-4778-98db-868e8fdafbef"
+      }
+    },
+    "owner": "gtesolin",
+    "updates": {
+      "url": "https://u.expo.dev/38af2c40-5e89-4778-98db-868e8fdafbef"
+    }
   }
 }
