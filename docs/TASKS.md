@@ -26,6 +26,7 @@
 | T6  | `t6-shared-fixed`   | T4, T5     |
 | T7  | `t7-excel-import`   | T1         |
 | T8  | `t8-release`        | T6         |
+| T9  | `t7-excel-import`   | T6         |
 
 T1 and T3 can run in parallel; so can T4, T5 and T7.
 
@@ -435,7 +436,7 @@ definer`, returns only name and owner of the household's shared concepts still p
 
 ---
 
-### T7 — Spreadsheet import
+### T7 — Spreadsheet import ✅ done
 
 `tools/excel-import.ts` (`npm run import -- --email <email> --pesos data/pesos.csv --dollars
 data/dolares.csv`) as specified in ARCHITECTURE.md `## Spreadsheet import`: parse both CSVs with
@@ -451,6 +452,20 @@ _Acceptance_: `npm run import:smoke` passes (header "agosto … agosto" maps to 
 real import creates 14 concepts and 15 months of entries and rates for the user, and running it
 twice leaves the same row counts; `git status` shows nothing under `data/`
 _Commit_: `feat(import): import fixed cost history from spreadsheet`
+
+_Status_: `import:smoke` passes. Real import against the local stack, after wiping the account's
+test concepts and rates: 14 concepts, 216 entries (31 of them 0 = not paid), 16 rates, no derived
+movements; a second run printed and left the same counts. The sheet now runs to November 2026, so
+16 months, not 15; November's empty cells stay pending.
+_Departures_: `zod` added as a dev dependency (it was only transitive). The header row is the first
+whose second cell is `agosto` (title rows above it are skipped); month columns end at the first
+non-month header, and a month out of order fails instead of shifting amounts. Concepts are
+matched to existing ones by exact name, so concepts created in the app are reused; a match with a
+**shared** concept stops the run before writing, since the trigger would turn every past month
+into a Compartidos expense. `Valor dolar`
+is read from whichever sheet has it, and only that row of the dollars sheet is parsed (its other
+rows are formulas that export as `#VALUE!`); rates are not rounded. Empty or `-` cells before the
+current month import as 0 (not paid, shown as `-` on Fijos), so past months don't read as pending.
 
 ---
 
@@ -468,6 +483,28 @@ _Acceptance_: both phones install the APK and sign in; a visible JS-only change 
 `eas update --branch preview` reaches both phones after reopening the app, without reinstalling;
 the author's Fijos shows the imported history; lint, format and typecheck pass
 _Commit_: `chore(release): add eas build and update for android`
+
+---
+
+### T9 — Menu, theme, household, unarchive and history ✅ done
+
+Done ahead of T8, on `t7-excel-import`. The `⋮` menu becomes a sheet: Grupo familiar (members and
+the invite code, shared through Android's share sheet), Tema (Sistema / Claro / Oscuro, through
+`Appearance.setColorScheme`, kept in SecureStore), Cerrar sesión and the app version. Conceptos
+lists archived concepts with `Desarchivar`. The menu also opens `Evolución de fijos`: every
+month's total, a bar per month, the USD estimate and the current month marked `En curso`. A
+migration stops a 0 on a shared concept from creating a $0 Compartidos expense (`rls:smoke` case
+6). Copy in ARCHITECTURE.md § UI copy.
+
+**Migration to apply**: `npx supabase migration up` (local) and, at T8, against production.
+
+_Output_: `src/app/members.tsx`, `src/app/history.tsx`, menu in `src/app/(tabs)/_layout.tsx`,
+theme choice in `src/theme.ts`, `SubScreenHeader` and `InviteCode` in `src/components/ui.tsx`,
+`supabase/migrations/20261110000000_zero_amount_no_movement.sql`
+_Acceptance_: `npm run fixed:smoke` covers `monthlyTotals`; on the phone the menu opens as a sheet,
+the theme switches and survives a restart, the invite code shares, an archived concept comes back,
+and Evolución's totals match each month's Fijos footer; lint, format and typecheck pass
+_Commit_: `feat(menu): add household, theme, unarchive and history screens`
 
 ---
 

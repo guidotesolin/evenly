@@ -93,4 +93,14 @@ assert.throws(() => parseSheet('x,agosto\nLuz,abc'), /Luz, 2025-08-01: "abc" is 
 
 assert.throws(() => importPlan(pesos, [], '2025-10-01'), /Valor dolar/);
 
+// es-AR separators fail instead of shrinking a thousand-scale value.
+assert.throws(() => parseSheet('x,agosto\nValor dolar,1.450'), /"1.450" is not an amount/);
+
+assert.throws(() => parseSheet('x,agosto\nLuz,"1.757.740,11"'), /is not an amount/);
+
+assert.deepEqual(parseSheet('x,agosto,septiembre\nLuz,$586,$5.21')[0].values, [
+  { month: '2025-08-01', value: 586 },
+  { month: '2025-09-01', value: 5.21 },
+]);
+
 console.log('ok import');

@@ -190,7 +190,9 @@ export default function Fixed() {
   const sharers = data?.members.filter((member) => member.active).length ?? 0;
 
   function detailOf(row: FixedRow): string | undefined {
-    const total = row.amount === null ? '' : ` · total ${formatArs(row.amount)}`;
+    // No total for pending or for 0 (not paid): the row already shows `Pendiente` or `-`.
+    const total =
+      row.amount === null || row.amount === 0 ? '' : ` · total ${formatArs(row.amount)}`;
 
     if (row.paidBy !== null) {
       const name = nameOf(row.paidBy);

@@ -3,9 +3,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
-import { useNavigationTheme } from '@/theme';
+import { applyTheme, loadTheme, useNavigationTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
+
+// ponytail: applied while the splash is still up; a slow read could flash the system scheme for a
+// frame. Gate the splash on it if that ever shows.
+loadTheme()
+  .then(applyTheme)
+  .catch(() => applyTheme('system'));
 
 function RootStack() {
   const { session, householdId } = useAuth();
@@ -35,6 +41,8 @@ function RootStack() {
         <Stack.Protected guard={signedIn && hasHousehold}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="concepts" />
+          <Stack.Screen name="members" />
+          <Stack.Screen name="history" />
           <Stack.Screen name="expense" />
         </Stack.Protected>
       </Stack>

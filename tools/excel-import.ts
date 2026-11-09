@@ -95,7 +95,9 @@ export function monthColumns(header: string[]): string[] {
 }
 
 // Cells as Google Sheets exports them (US separators): `$1,757,740.11`, `US$ 1,212.50`, `1450`.
-// Empty, `-` or the accounting zero `$ -` is `null`.
+// Empty, `-` or the accounting zero `$ -` is `null`. Thousands need commas and decimals stop at
+// two digits, so a sheet exported with es-AR separators (`1.450`, `1.757.740,11`) fails instead
+// of importing 1.45.
 const cellSchema = z
   .string()
   .trim()
@@ -107,7 +109,7 @@ const cellSchema = z
         .transform(() => null),
       z
         .string()
-        .regex(/^(US)?\$?\s*[\d,]+(\.\d+)?$/)
+        .regex(/^(US)?\$?\s*(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/)
         .transform((text) => Number(text.replace(/[^\d.]/g, ''))),
     ]),
   );
@@ -252,11 +254,18 @@ async function main(): Promise<void> {
     return concept.entries.map((entry) => ({ concept_id: conceptId, ...entry }));
   });
 
-  const upserted = await admin
-    .from('fixed_entries')
-    .upsert(entries, { onConflict: 'concept_id,month' });
+  // Amounts overwrite (the sheet is the source of truth); zeros only fill months with no entry,
+  // so a re-run after a month has passed never blanks an amount typed in the app since.
+  for (const [rows, ignoreDuplicates] of [
+    [entries.filter((entry) => entry.amount !== 0), false],
+    [entries.filter((entry) => entry.amount === 0), true],
+  ] as const) {
+    const upserted = await admin
+      .from('fixed_entries')
+      .upsert(rows, { onConflict: 'concept_id,month', ignoreDuplicates });
 
-  if (upserted.error) throw upserted.error;
+    if (upserted.error) throw upserted.error;
+  }
 
   const rates = await admin.from('reference_rates').upsert(
     plan.rates.map((rate) => ({ owner_id: user.id, month: rate.month, ars_per_usd: rate.value })),

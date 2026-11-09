@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, ScrollView, Text, View } from 'react-native';
-import { Button, Card, Input, Screen } from '@/components/ui';
+import { Button, Card, Input, InviteCode, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { space, type, useColors } from '@/theme';
@@ -56,27 +56,7 @@ export default function HouseholdSetup() {
             Compartí este código para que se unan:
           </Text>
         </View>
-        <Card>
-          <Text style={[type.caption, { color: c.muted, textAlign: 'center' }]}>
-            Código de invitación
-          </Text>
-          <Text
-            selectable
-            style={{
-              fontSize: 40,
-              lineHeight: 48,
-              fontWeight: '700',
-              letterSpacing: 8,
-              textAlign: 'center',
-              color: c.text,
-            }}
-          >
-            {inviteCode}
-          </Text>
-          <Text style={[type.caption, { color: c.muted, textAlign: 'center', fontWeight: '400' }]}>
-            Mantené presionado para copiarlo.
-          </Text>
-        </Card>
+        <InviteCode code={inviteCode} />
         <Button
           title="Continuar"
           disabled={busy}
