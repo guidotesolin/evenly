@@ -33,7 +33,8 @@
     "oxlint": "1.91.0",
     "prettier": "^3.9.10",
     "supabase": "^3.0.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "zod": "^4.6.7"
   },
   "scripts": {
     "start": "expo start --dev-client",
@@ -45,7 +46,9 @@
     "rls:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/rls-smoke.ts",
     "db:types": "supabase gen types typescript > src/lib/database.types.ts",
     "fixed:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/fixed-smoke.ts",
-    "shared:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/shared-smoke.ts"
+    "shared:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/shared-smoke.ts",
+    "import": "node --env-file=.env --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/excel-import.ts",
+    "import:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/import-smoke.ts"
   },
   "private": true
 }

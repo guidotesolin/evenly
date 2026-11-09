@@ -1,5 +1,6 @@
 import { DarkTheme, DefaultTheme, type Theme } from 'expo-router';
-import { useColorScheme, type TextStyle } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { Appearance, useColorScheme, type TextStyle } from 'react-native';
 
 // Approved design "Libreta": see ARCHITECTURE.md § Design and UI copy. Contrast is ≥4.5:1 for
 // text and muted text on every surface, in both schemes.
@@ -35,7 +36,28 @@ const dark: Colors = {
   scrim: 'rgba(0, 0, 0, 0.6)',
 };
 
-/** Follows the system scheme (`userInterfaceStyle: automatic` in app.json). */
+/** The menu's Tema choice; `system` follows the phone. */
+export type ThemeChoice = 'system' | 'light' | 'dark';
+
+const themeKey = 'theme';
+
+/** Overrides the scheme app-wide, so `useColorScheme` and native dialogs follow it. */
+export function applyTheme(choice: ThemeChoice): void {
+  Appearance.setColorScheme(choice === 'system' ? 'unspecified' : choice);
+}
+
+export async function loadTheme(): Promise<ThemeChoice> {
+  const stored = await SecureStore.getItemAsync(themeKey);
+
+  return stored === 'light' || stored === 'dark' ? stored : 'system';
+}
+
+export async function saveTheme(choice: ThemeChoice): Promise<void> {
+  applyTheme(choice);
+  await SecureStore.setItemAsync(themeKey, choice);
+}
+
+/** Follows the scheme: the system's (`userInterfaceStyle: automatic`) unless Tema overrides it. */
 export function useColors(): Colors {
   return useColorScheme() === 'dark' ? dark : light;
 }

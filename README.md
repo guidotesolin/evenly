@@ -136,6 +136,24 @@ things have to exist before the sign-in button works:
 
 The session is kept in `expo-secure-store` and survives restarts; the header menu signs out.
 
+## Spreadsheet import (one-time)
+
+`tools/excel-import.ts` loads the fixed-cost history from the "Gastos mensuales" spreadsheet into
+one account (see [ARCHITECTURE.md](docs/ARCHITECTURE.md#spreadsheet-import)). The CSVs go in
+`data/`, which is gitignored: personal financial data never enters the repo.
+
+1. In Google Sheets, open the **En pesos** sheet and choose **File → Download → Comma-separated
+   values (.csv)**. This exports only the open sheet. Save it as `data/pesos.csv`.
+2. Do the same with the **En dolares** sheet and save it as `data/dolares.csv`.
+3. In `.env`, set `SUPABASE_SERVICE_ROLE_KEY` (locally: `SERVICE_ROLE_KEY` from
+   `npx supabase status -o json`). The import writes to the Supabase project in
+   `EXPO_PUBLIC_SUPABASE_URL`. The user has to have signed in to the app once.
+4. Run it. It is idempotent, so it can be repeated after fixing the spreadsheet:
+
+   ```bash
+   npm run import -- --email you@gmail.com --pesos data/pesos.csv --dollars data/dolares.csv
+   ```
+
 ## Checks
 
 ```bash

@@ -5,6 +5,7 @@ import {
   monthKey,
   monthLabel,
   monthRows,
+  monthlyTotals,
   parseWholeNumber,
   rowTotal,
   summarizeMonth,
@@ -116,5 +117,29 @@ assert.deepEqual(summarizeMonth(rows.map(rowTotal)), {
   total: 90000 + 8000 + 15000 + 13000,
   pending: 2,
 });
+
+// Evolución: October has my Auto, my half of Luz and my half of Ana's Internet; September
+// only a pending entry (nothing); a 0 counts as paid nothing. Newest first.
+assert.deepEqual(
+  monthlyTotals(
+    [
+      { id: 'e-auto', month: '2026-10-01', amount: 90000 },
+      { id: 'e-luz', month: '2026-10-01', amount: 26000 },
+      { id: 'e-gym', month: '2026-10-01', amount: 0 },
+      { id: 'e-seguro', month: '2026-09-01', amount: null },
+      { id: 'e-auto-8', month: '2026-08-01', amount: 85000 },
+    ],
+    [
+      { fixed_entry_id: 'e-luz', paid_by: 'me', occurred_on: '2026-10-09', my_share: 13000 },
+      { fixed_entry_id: 'e-net', paid_by: 'partner', occurred_on: '2026-10-31', my_share: 15000 },
+      { fixed_entry_id: null, paid_by: 'partner', occurred_on: '2026-10-02', my_share: 500 },
+    ],
+    'me',
+  ),
+  [
+    { month: '2026-10-01', total: 90000 + 13000 + 15000 },
+    { month: '2026-08-01', total: 85000 },
+  ],
+);
 
 console.log('ok fixed');
