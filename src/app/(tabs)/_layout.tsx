@@ -1,5 +1,5 @@
 import { router, Tabs } from 'expo-router';
-import { Alert, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { Button, IconButton } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { type, useColors } from '@/theme';
@@ -48,6 +48,11 @@ export default function TabsLayout() {
         // ponytail: label-only tabs; the design draws icons. Add them with @expo/vector-icons
         // (or native tabs' `md` icons) when the extra dependency is worth it.
         tabBarIconStyle: { display: 'none' },
+        // The default tab button's ripple is borderless, so without icons it spreads as a circle
+        // far past the small label. This one fills the tab and stays inside it.
+        tabBarButton: ({ ref: _ref, ...props }) => (
+          <Pressable {...props} android_ripple={{ color: c.line, foreground: true }} />
+        ),
       }}
     >
       <Tabs.Screen

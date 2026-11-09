@@ -1,3 +1,4 @@
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import type { ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
@@ -15,6 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 import { monthLabel } from '@/lib/fixed';
 import { formatArs, formatUsd } from '@/lib/money';
+import { dayKey, dayLabel, parseDay } from '@/lib/shared';
 import { radius, space, touch, type, useColors } from '@/theme';
 
 // Base components of the approved design (ARCHITECTURE.md § Design and UI copy). Screens compose
@@ -154,11 +156,13 @@ type RowProps = {
   detail?: string;
   /** Emoji or initial shown in a circle; omitted rows have no circle. */
   icon?: string;
+  /** Small chip after the title (`Fijo`). */
+  badge?: string;
   right?: ReactNode;
   onPress?: () => void;
 };
 
-export function Row({ title, detail, icon, right, onPress }: RowProps) {
+export function Row({ title, detail, icon, badge, right, onPress }: RowProps) {
   const c = useColors();
 
   return (
@@ -197,7 +201,25 @@ export function Row({ title, detail, icon, right, onPress }: RowProps) {
         </View>
       )}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[type.body, { color: c.text }]}>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <Text style={[type.body, { color: c.text, flexShrink: 1 }]}>{title}</Text>
+          {badge ? (
+            <Text
+              style={[
+                type.caption,
+                {
+                  paddingHorizontal: space.sm,
+                  borderRadius: radius.pill,
+                  overflow: 'hidden',
+                  backgroundColor: c.surface2,
+                  color: c.muted,
+                },
+              ]}
+            >
+              {badge}
+            </Text>
+          ) : null}
+        </View>
         {detail ? <Text style={[type.caption, { color: c.muted }]}>{detail}</Text> : null}
       </View>
       {right}
@@ -250,6 +272,59 @@ export function MonthSelector({ month, onChange }: MonthSelectorProps) {
   );
 }
 
+type DaySelectorProps = {
+  /** `YYYY-MM-DD`. */
+  day: string;
+  onChange: (day: string) => void;
+  disabled?: boolean;
+};
+
+/**
+ * `Fecha` field: shows `Hoy`, `Ayer` or the date and opens Android's calendar dialog. Never past
+ * today: a movement is something that already happened, not one planned for tomorrow.
+ */
+export function DaySelector({ day, onChange, disabled = false }: DaySelectorProps) {
+  const c = useColors();
+  const label = dayLabel(day, new Date());
+
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={[type.caption, { color: c.muted }]}>Fecha</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Fecha: ${label}`}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        android_ripple={{ color: c.line }}
+        onPress={() =>
+          DateTimePickerAndroid.open({
+            mode: 'date',
+            value: parseDay(day),
+            maximumDate: new Date(),
+            positiveButton: { label: 'Aceptar' },
+            negativeButton: { label: 'Cancelar' },
+            // Only on Aceptar; cancelling keeps the day.
+            onValueChange: (_event, picked) => onChange(dayKey(picked)),
+          })
+        }
+        style={{
+          minHeight: touch,
+          justifyContent: 'center',
+          paddingHorizontal: 14,
+          borderWidth: 1,
+          borderColor: c.line,
+          borderRadius: radius.field,
+          backgroundColor: c.surface,
+          overflow: 'hidden',
+          opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        <Text style={[type.body, { color: c.text }]}>{label}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 type IconButtonProps = {
   glyph: string;
   label: string;
@@ -257,20 +332,36 @@ type IconButtonProps = {
   size?: number;
   /** Defaults to muted; header and month arrows use the text colour. */
   color?: string;
+  disabled?: boolean;
 };
 
 // ponytail: Unicode glyphs instead of the design's SVG icons, like the label-only tabs. Swap
 // for an icon set when one is installed.
-export function IconButton({ glyph, label, onPress, size = 20, color }: IconButtonProps) {
+export function IconButton({
+  glyph,
+  label,
+  onPress,
+  size = 20,
+  color,
+  disabled = false,
+}: IconButtonProps) {
   const c = useColors();
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       android_ripple={{ color: c.line, borderless: true }}
-      style={{ width: touch, height: touch, alignItems: 'center', justifyContent: 'center' }}
+      style={{
+        width: touch,
+        height: touch,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: disabled ? 0.3 : 1,
+      }}
     >
       <Text style={{ fontSize: size, lineHeight: size + 4, color: color ?? c.muted }}>{glyph}</Text>
     </Pressable>

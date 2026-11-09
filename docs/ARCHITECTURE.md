@@ -131,6 +131,11 @@ Per member, positive = the household owes them:
 
 The view uses `security_invoker = true` so it respects RLS.
 
+The Compartidos header's "my expenses" reads `my_share`, a PostgREST computed field on
+`shared_movements` (`select('*, my_share')`): the caller's share of an expense through
+`household_participants` / `participant_count`, 0 for reimbursements and for expenses the caller
+didn't take part in. The app never repeats the split rule.
+
 ### Settling (`Saldar`)
 
 Tricount-style running balance. "Settle" creates a `reimbursement` from the member who owes to the
@@ -210,7 +215,9 @@ Android's system font, so no font is bundled. Light and dark follow the system
   `type` scale, and `useNavigationTheme()` for headers and tab bar. Every colour pair passes 4.5:1.
 - **Base components**: `src/components/ui.tsx` — `Screen`, `Card`, `Money`, `Row`, `Button`
   (`primary` | `secondary` | `text` | `danger`), `Input` (labelled), `MonthSelector`, `Sheet`
-  (bottom sheet with title and subtitle), `IconButton` (48 dp glyph button with a label). Screens compose these; they do not style raw
+  (bottom sheet with title and subtitle), `IconButton` (48 dp glyph button with a label),
+  `DaySelector` (the `Fecha` field: opens Android's calendar dialog,
+  `@react-native-community/datetimepicker`, never past today). `Row` takes an optional `badge` (`Fijo`). Screens compose these; they do not style raw
   primitives.
 - **Money formatting**: `src/lib/money.ts` — `formatArs` (`$ 1.495.000`) and `formatUsd`
   (`≈ US$ 1.031,03`, always with `≈` since amounts are stored in pesos; `null` without a rate).
@@ -291,12 +298,19 @@ cargados se conservan.` · `Archivar`, `Cancelar`
 - Row details: `Pagaste vos`, `Pagó {name}`, `Transferiste vos`, `Te transfirió {name}`; derived
   rows carry the chip `Fijo`; a settle row's description is `Reembolso`
 - Floating button: `Agregar gasto`
+- Tapping a reimbursement: `¿Eliminar este reembolso?` · `Eliminar`, `Cancelar`
 
 **Expense form**
 
 - Titles `Nuevo gasto` / `Editar gasto` · close accessibility label `Cerrar`
-- Fields `Descripción` (placeholder `Ej.: Supermercado`), `Monto`, `Fecha` (default `Hoy`),
-  `Pagó` with `Vos` / `{name}`
+- Fields `Descripción` (placeholder `Ej.: Supermercado`), `Monto`, `Fecha` (default `Hoy`;
+  accessibility label `Fecha: {Hoy | Ayer | date}`; calendar dialog buttons `Aceptar`,
+  `Cancelar`), `Pagó` with `Vos` / `{name}`
+- Derived movement (read-only): `Viene de Fijos: se edita desde ahí.`
+- A date with nobody in the household (before it existed): `Esa fecha es anterior al grupo:
+elegí otra.` (Guardar stays disabled)
+- Saving or deleting an expense another phone already deleted: `Error` · `Este gasto ya no
+existe.`
 - Hint: `Se divide en partes iguales: {$ share} cada uno.`
 - Buttons `Guardar`, `Eliminar gasto` · confirm `¿Eliminar este gasto?` · `Eliminar`, `Cancelar`
 
