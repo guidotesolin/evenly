@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { loadShowUsd } from '@/lib/show-usd';
 import { applyTheme, loadTheme, useNavigationTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -12,6 +13,9 @@ SplashScreen.preventAutoHideAsync();
 loadTheme()
   .then(applyTheme)
   .catch(() => applyTheme('system'));
+
+// Same as the theme; a failed read keeps the default (dollars shown).
+loadShowUsd().catch(() => undefined);
 
 function RootStack() {
   const { session, householdId } = useAuth();

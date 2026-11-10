@@ -1,7 +1,17 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
-import { Button, Input, Money, MonthSelector, Row, Screen, Sheet } from '@/components/ui';
+import { Alert, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
+import {
+  Button,
+  Input,
+  Money,
+  MonthSelector,
+  Row,
+  Screen,
+  RateCard,
+  Sheet,
+  TotalFooter,
+} from '@/components/ui';
 import { fetchMembers, useAuth, type Member } from '@/lib/auth';
 import {
   groupThousands,
@@ -13,7 +23,8 @@ import {
   summarizeMonth,
   type FixedRow,
 } from '@/lib/fixed';
-import { formatArs, formatUsd } from '@/lib/money';
+import { formatArs } from '@/lib/money';
+import { useShowUsd } from '@/lib/show-usd';
 import { supabase } from '@/lib/supabase';
 import { radius, space, type, useColors } from '@/theme';
 
@@ -80,6 +91,8 @@ async function fetchMonth(month: Date, householdId: string, me: string): Promise
 export default function Fixed() {
   const c = useColors();
   const { session, householdId } = useAuth();
+  // Menu's "Mostrar dólares": off hides the rate card and every USD figure.
+  const showUsd = useShowUsd();
   // The tabs only mount with a session and a household (root layout guards).
   const me = session?.user.id ?? '';
   const household = householdId ?? '';
@@ -181,9 +194,8 @@ export default function Fixed() {
   const parsed = parseWholeNumber(text);
   const summary = summarizeMonth(data?.rows.map(rowTotal) ?? []);
   const rate = data?.rate ?? null;
-  const usd = formatUsd(summary.total, rate);
   // A month without a rate falls back to pesos.
-  const usdRate = inUsd ? rate : null;
+  const usdRate = showUsd && inUsd ? rate : null;
   const nameOf = (id: string) => data?.members.find((member) => member.id === id)?.name ?? '';
   // ponytail: the hint splits by today's active members; the saved row shows the movement's real
   // share (participant_count on its date). Differs only in a month when someone joined or left.
@@ -231,44 +243,19 @@ export default function Fixed() {
 
         {data && (
           <View style={{ gap: space.md, opacity: stale ? 0.5 : 1 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderRadius: radius.field,
-                backgroundColor: c.accentSoft,
-                overflow: 'hidden',
-              }}
-            >
-              <Pressable
-                accessibilityRole="button"
+            {showUsd && (
+              <RateCard
+                rate={rate}
+                usd={inUsd}
+                onUsdChange={setInUsd}
                 disabled={stale}
-                android_ripple={{ color: c.line }}
                 onPress={() => {
                   // Whole pesos per dollar, like every peso amount (older rates may carry decimals).
                   setText(rate === null ? '' : groupThousands(String(Math.round(rate))));
                   setSheet('rate');
                 }}
-                style={{
-                  flex: 1,
-                  minHeight: 56,
-                  justifyContent: 'center',
-                  gap: 2,
-                  paddingVertical: space.sm,
-                  paddingHorizontal: space.lg,
-                }}
-              >
-                {rate === null ? (
-                  <Text style={[type.label, { color: c.accent }]}>Dólar de referencia</Text>
-                ) : (
-                  <>
-                    <Text style={[type.caption, { color: c.muted }]}>Dólar de referencia</Text>
-                    <Money amount={rate} style={{ fontWeight: '500' }} />
-                  </>
-                )}
-              </Pressable>
-              {rate !== null && <CurrencySwitch usd={inUsd} disabled={stale} onChange={setInUsd} />}
-            </View>
+              />
+            )}
 
             <View style={{ borderRadius: radius.field, overflow: 'hidden' }}>
               {data.rows.map((row) => (
@@ -317,36 +304,19 @@ export default function Fixed() {
       </ScrollView>
 
       {data && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            gap: space.md,
-            paddingVertical: space.md,
-            paddingHorizontal: space.lg,
-            borderTopWidth: 1,
-            borderTopColor: c.line,
-            backgroundColor: c.surface,
-            opacity: stale ? 0.5 : 1,
-          }}
-        >
-          <View style={{ flex: 1, gap: space.xs, alignItems: 'flex-start' }}>
-            <Text style={[type.caption, { color: c.muted }]}>Total del mes</Text>
-            {summary.pending > 0 && (
+        <TotalFooter
+          total={summary.total}
+          rate={showUsd ? rate : null}
+          usd={inUsd}
+          dimmed={stale}
+          badge={
+            summary.pending > 0 && (
               <PendingChip
                 label={`${summary.pending} ${summary.pending === 1 ? 'pendiente' : 'pendientes'}`}
               />
-            )}
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Money amount={summary.total} usdRate={usdRate} style={type.total} />
-            {usd && (
-              <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>
-                {usdRate ? formatArs(summary.total) : usd}
-              </Text>
-            )}
-          </View>
-        </View>
+            )
+          }
+        />
       )}
 
       <Sheet
@@ -424,54 +394,6 @@ export default function Fixed() {
         />
       </Sheet>
     </Screen>
-  );
-}
-
-/** `ARS | USD` in the rate card. */
-function CurrencySwitch({
-  usd,
-  disabled,
-  onChange,
-}: {
-  usd: boolean;
-  disabled: boolean;
-  onChange: (usd: boolean) => void;
-}) {
-  const c = useColors();
-
-  return (
-    <View style={{ flexDirection: 'row', marginRight: space.md, gap: 2 }}>
-      {[
-        { value: false, glyph: 'ARS', label: 'Ver en pesos' },
-        { value: true, glyph: 'USD', label: 'Ver en dólares' },
-      ].map((option) => {
-        const selected = option.value === usd;
-
-        return (
-          <Pressable
-            key={option.glyph}
-            accessibilityRole="button"
-            accessibilityLabel={option.label}
-            accessibilityState={{ selected, disabled }}
-            disabled={disabled}
-            onPress={() => onChange(option.value)}
-            style={{
-              minWidth: 48,
-              minHeight: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: space.sm,
-              borderRadius: radius.pill,
-              backgroundColor: selected ? c.accent : 'transparent',
-            }}
-          >
-            <Text style={[type.label, { color: selected ? c.onAccent : c.accent }]}>
-              {option.glyph}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
