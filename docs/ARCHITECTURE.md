@@ -169,9 +169,13 @@ month + 1 month − 1 day))`), so the movement always falls in the entry's month
 - A shared concept is a monthly household cost, so while its owner hasn't entered the month's
   amount it shows as a **pending read-only row** ("paga X") on the other members' Fixed screens
   and counts in their pending total. Those rows come from `pending_shared_concepts(month)`, a
-  `security definer` function that returns only the name and owner of the active, shared,
+  `security definer` function that returns only the name, owner and emoji of the active, shared,
   non-archived concepts of the caller's household members with no amount that month; nothing
-  else of `fixed_*` is exposed. Known ceiling: there is no record of when a concept became
+  else of `fixed_*` is exposed.
+- Read-only rows show the owner's emoji (only the owner edits it): pending rows get it from
+  `pending_shared_concepts`, paid ones from `concept_emoji`, a `security definer` computed field
+  on `shared_movements` that looks the movement up by id and answers only active members of its
+  household (`20261111000000_shared_concept_emoji.sql`, `rls:smoke` case 9). Known ceiling: there is no record of when a concept became
   shared, so one shared today also shows as pending in past months.
 
 ### Row Level Security

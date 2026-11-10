@@ -35,7 +35,7 @@ async function fetchMonth(month: Date, householdId: string, me: string): Promise
     // The trigger dates them inside the entry's month.
     supabase
       .from('shared_movements')
-      .select('fixed_entry_id, paid_by, description, amount, my_share')
+      .select('fixed_entry_id, paid_by, description, amount, my_share, concept_emoji')
       .eq('household_id', householdId)
       .not('fixed_entry_id', 'is', null)
       .gte('occurred_on', key)

@@ -139,9 +139,9 @@ isOneToOne: false
                   ]
                 },"shared_movements": {
                   Row: {
-                    "amount": number,"created_at": string,"description": string,"fixed_entry_id": string | null,"household_id": string,"id": string,"kind": string,"occurred_on": string,"paid_by": string,"paid_to": string | null,"my_share": number | null
+                    "amount": number,"created_at": string,"description": string,"fixed_entry_id": string | null,"household_id": string,"id": string,"kind": string,"occurred_on": string,"paid_by": string,"paid_to": string | null,"concept_emoji": string | null,"my_share": number | null
                   }
-                  ComputedFields: "my_share"
+                  ComputedFields: "concept_emoji" | "my_share"
                   Insert: {
                     "amount": number,"created_at"?: string,"description": string,"fixed_entry_id"?: string | null,"household_id": string,"id"?: string,"kind": string,"occurred_on"?: string,"paid_by": string,"paid_to"?: string | null
                   }
@@ -201,7 +201,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "create_household":
+            "concept_emoji":
+{ Args: { "movement": Omit<Database["public"]['Tables']["shared_movements"]['Row'], Database["public"]['Tables']["shared_movements"]['ComputedFields']> }; Returns: string
+                           },
+"create_household":
 { Args: { "household_name": string }; Returns: {
               "created_at": string,
 "id": string,
@@ -241,7 +244,7 @@ isOneToOne: false
                            },
 "pending_shared_concepts":
 { Args: { "target_month": string }; Returns: {
-              "concept_id": string,"name": string,"owner_id": string
+              "concept_id": string,"emoji": string,"name": string,"owner_id": string
             }[]
                            }
           }
