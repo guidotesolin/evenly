@@ -5,15 +5,15 @@
 
 ## Context
 
-the author and Ana live together and share household costs. Today that takes two tools:
+Two people live together and share household costs. Today that takes two tools:
 
-1. **A personal spreadsheet for fixed costs** (the author's "Gastos mensuales" on Google Sheets): one
+1. **A personal spreadsheet for fixed costs** ("Gastos mensuales" on Google Sheets): one
    row per concept (rent, credit card, car, electricity, streaming, health insurance, taxes…), one
    column per month since August 2025, and a second sheet that divides every amount by a
    **reference dollar** entered at the start of each month, to see costs in USD. Since August 2026,
-   rent and internet appear at half value: that is the author's share after moving in together.
+   rent and internet appear at half value: that is one person's share after moving in together.
 2. **Tricount for shared costs**: occasional expenses (greengrocer, supermarket) plus shared fixed
-   costs (the author pays electricity, Ana pays internet), split evenly. Small expenses are settled
+   costs (one pays electricity, the other pays internet), split evenly. Small expenses are settled
    at the end of each month; **big ones (rent) are settled right away**.
 
 Goal of v1: one Android app for both of them that replaces the spreadsheet and Tricount, starting
@@ -52,7 +52,7 @@ Product names map to code names: `Fijos` → `fixed`, `Compartidos` → `shared`
 
 | Layer         | Choice                                                                                          | Why                                                                                                                                    |
 | ------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| App           | React Native + Expo (SDK current at T0), `expo-router`, TypeScript strict                       | Real Android app for the CV, reuses the author's React/TS; Expo removes native tooling pain                                                 |
+| App           | React Native + Expo (SDK current at T0), `expo-router`, TypeScript strict                       | Real Android app for the CV, reuses the author's React/TS; Expo removes native tooling pain                                            |
 | Backend       | Supabase: Postgres + Auth + Row Level Security                                                  | No server to run; RLS keeps each person's fixed costs private; free tier covers two users                                              |
 | Client data   | `@supabase/supabase-js` with generated types (`supabase gen types`)                             | Typed queries without an ORM; the DB is the API                                                                                        |
 | Auth          | Google Sign-In: `@react-native-google-signin/google-signin` + `supabase.auth.signInWithIdToken` | Both use Google accounts; native flow, no passwords. Requires a dev build (`expo-dev-client`), not Expo Go                             |
@@ -148,8 +148,8 @@ With more than two members, "settle" picks the counterpart explicitly.
 
 ### Shared fixed costs
 
-A fixed concept with `is_shared = true` is a cost one member pays for the household (the author pays
-electricity, Ana pays internet).
+A fixed concept with `is_shared = true` is a cost one member pays for the household (one member pays
+electricity, the other pays internet).
 
 - When its `fixed_entry` gets an amount, a **Postgres trigger** (on `fixed_entries` insert/update/
   delete, `security definer`) creates, updates or deletes the matching `shared_movements` row:
@@ -165,7 +165,7 @@ month + 1 month − 1 day))`), so the movement always falls in the entry's month
   `participant_count`); the month total adds **only my share**.
 - On the other members' **Fixed** screens, shared fixed costs paid by someone else appear as
   **read-only rows** with "paid by X", the total and their share, and their share is added to
-  their month total (this is how internet appears in the author's spreadsheet since August 2026). These
+  their month total (this is how internet appears in the original spreadsheet since August 2026). These
   rows are read from `shared_movements where fixed_entry_id is not null and paid_by <> me` for the
   month, so the private `fixed_*` tables never leak.
 - A shared concept is a monthly household cost, so while its owner hasn't entered the month's
@@ -424,13 +424,13 @@ saldar una parte y el resto queda pendiente.` · field `Fecha` (`Hoy`)
 
 ## Spreadsheet import
 
-`tools/excel-import.ts` (T7) loads the author's history into his account, once:
+`tools/excel-import.ts` (T7) loads the spreadsheet's history into one account, once:
 
 - Input: the two sheets ("En pesos", "En dolares") exported as CSV into `data/` — **`data/` is
   gitignored: personal financial data never enters the public repo**.
 - Month headers have no year; the first column is August 2025 and each next column is the next
   month.
-- Every row except `Total` becomes a `fixed_concept` (not shared: history holds the author's own
+- Every row except `Total` becomes a `fixed_concept` (not shared: history holds the owner's own
   amounts, already halved where it applied). `-` or empty before the current month = 0 (not paid);
   from the current month on = no entry (pending in the app). Those zeros only fill months with
   no entry, so a later re-run never blanks an amount typed in the app. Amounts are

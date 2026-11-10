@@ -70,9 +70,9 @@ assert.equal(monthKey(new Date(2027, 0, 1)), '2027-01-01');
 
 assert.equal(monthLabel(new Date(2026, 10, 1)), 'Noviembre 2026');
 
-// Shared fixed costs (T6). the author: Luz shared with a derived movement, Auto all his, Gas marked
-// shared after its amount was entered (no movement: stays whole), Seguro pending. Ana's
-// Internet comes in read-only with the author's half; her Agua, not entered yet, is pending for him too.
+// Shared fixed costs (T6). Mine: Luz shared with a derived movement, Auto all mine, Gas marked
+// shared after its amount was entered (no movement: stays whole), Seguro pending. The partner's
+// Internet comes in read-only with my half; their Agua, not entered yet, is pending for me too.
 const rows = monthRows(
   [
     { id: 'c-luz', name: 'Luz', emoji: null, isShared: true, entryId: 'e-luz', amount: 26000 },
@@ -120,7 +120,7 @@ assert.deepEqual(summarizeMonth(rows.map(rowTotal)), {
   pending: 2,
 });
 
-// Evolución: October has my Auto, my half of Luz and my half of Ana's Internet; September
+// Evolución: October has my Auto, my half of Luz and my half of the partner's Internet; September
 // only a pending entry (nothing); a 0 counts as paid nothing. Newest first.
 assert.deepEqual(
   monthlyTotals(

@@ -380,13 +380,13 @@ management, a "shared" toggle (with the note that it applies only from now on); 
 total and my share (`amount / participant_count`), and the month total adds only my share;
 read-only rows for shared fixed costs paid by other members, read from `shared_movements`, with
 their share added to the total. The derived expense appears on Compartidos ("Luz, paid by
-the author") through the T1 trigger — no extra writes from the app.
+member A") through the T1 trigger — no extra writes from the app.
 
 _Output_: changes to Fijos and concept management
-_Acceptance_: on two phones: the author marks "Luz" as shared and enters 26.000 → the author's Fijos shows
+_Acceptance_: on two phones: A marks "Luz" as shared and enters 26.000 → A's Fijos shows
 26.000 / my share 13.000 and the total adds 13.000; Compartidos on both phones shows "Luz, pagado
-por the author" 26.000 and the balance moves by 13.000; Ana's Fijos shows a read-only Luz row with
-her 13.000 in her total; the author changes it to 30.000 → all three places update; the author clears the
+por A" 26.000 and the balance moves by 13.000; B's Fijos shows a read-only Luz row with
+their 13.000 in their total; A changes it to 30.000 → all three places update; A clears the
 amount → the movement disappears
 _Commit_: `feat(fixed): split shared fixed costs into the household`
 
@@ -412,10 +412,10 @@ _Commit_: `feat(fixed): split shared fixed costs into the household`
 - `npm run fixed:smoke`: `ok fixed` (new cases: a shared row with its movement, a shared one
   entered before the toggle, a read-only row, the total adding only shares).
 - A throwaway script against the local stack (deleted after) ran the screen's exact queries with
-  two users: the author marks Luz shared and enters 26.000 → his Fijos 26.000 / share 13.000, total
-  13.000; Ana's Fijos a read-only Luz with 13.000 in her total, her Compartidos `Luz` paid by
-  the author, balance ±13.000, and she can't read the author's concepts; 30.000 → 15.000 everywhere;
-  cleared → pending for the author, gone for Ana and from Compartidos; unshared and re-entered →
+  two users: A marks Luz shared and enters 26.000 → A's Fijos 26.000 / share 13.000, total
+  13.000; B's Fijos a read-only Luz with 13.000 in B's total, B's Compartidos `Luz` paid by
+  A, balance ±13.000, and B can't read A's concepts; 30.000 → 15.000 everywhere;
+  cleared → pending for A, gone for B and from Compartidos; unshared and re-entered →
   whole again.
 - `npm run lint`, `npm run format:check`, `npm run typecheck`: exit 0.
 - `npx expo export --platform android`: Hermes bundle built.
@@ -478,13 +478,13 @@ Add `eas.json` with a `preview` profile (`buildType: apk`, channel `preview`) an
 `expo-updates`. Create the hosted Supabase project, run the migrations against it, and point the
 preview build's env at it (EAS environment variables, never committed). Register the EAS
 keystore's SHA-1 on the Google Android OAuth client. Build, install on both phones, run the
-import (T7) for the author against production. Document in the README: building, installing,
+import (T7) for the first user against production. Document in the README: building, installing,
 publishing an update (`eas update --branch preview`), and when a new APK is needed instead.
 
 _Output_: `eas.json`, updates config, README distribution section
 _Acceptance_: both phones install the APK and sign in; a visible JS-only change published with
 `eas update --branch preview` reaches both phones after reopening the app, without reinstalling;
-the author's Fijos shows the imported history; lint, format and typecheck pass
+the first user's Fijos shows the imported history; lint, format and typecheck pass
 _Commit_: `chore(release): add eas build and update for android`
 
 Done on `t7-excel-import` (2026-11-09). Hosted project `evenly` (São Paulo), migrations applied with
@@ -496,8 +496,8 @@ client, since a client holds one fingerprint; `updates.url` was written by hand 
 the app icon ("Mitades", `assets/images/`, accent `#2F55D4` for adaptive icon and splash). The
 preview APK and the dev build share the package, so a phone holds one at a time.
 
-Measured on production (read-only `supabase db query --remote`): the author and Ana in household
-`Casa`; the author has 14 concepts (2 archived) with entries and a reference rate for every month from
+Measured on production (read-only `supabase db query --remote`): two members in one
+household; the first has 14 concepts (2 archived) with entries and a reference rate for every month from
 2025-08 to 2026-10 (16 months with November). Both phones signed in and received the OTA. After the
 review, EAS manages the Android `versionCode` (`appVersionSource: remote`, `autoIncrement`).
 
@@ -587,7 +587,7 @@ fixed:smoke`, `npm run lint`, `npm run format:check`, `npm run typecheck`: pass.
 Things found while executing the board and deliberately left. Each one says why it was left and
 who it belongs to. Shortcuts inside code are `ponytail:` comments instead.
 
-| ID  | What                                                         | Why it was left                                                                                                                                                                                                                                                                                                       | Belongs to |
-| --- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| B1  | ~~Import Ana's fixed-cost spreadsheet~~                  | ✅ done 2026-11-09: one sheet per month (June–November 2026), es-AR amounts, no `Valor dolar`, so not T7's script; a one-off SQL insert against production. 9 concepts, 53 entries, totals as paid (not halved); her shared `Flow` left without history                                                               | —          |
-| B2  | ~~Import this month's shared expenses once the app is live~~ | ✅ done 2026-11-09: November's Tricount (6 expenses) loaded by one-off SQL against production; Alquiler and its reimbursement deleted (settled outside the app); Flow + Cel entered through Ana's shared fixed concept; both members' `joined_on` moved to 2026-11-01 so earlier-dated expenses have participants | —          |
+| ID  | What                                                         | Why it was left                                                                                                                                                                                                                                                                                                                 | Belongs to |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| B1  | ~~Import the second member's fixed-cost spreadsheet~~        | ✅ done 2026-11-09: one sheet per month (June–November 2026), es-AR amounts, no `Valor dolar`, so not T7's script; a one-off SQL insert against production. 9 concepts, 53 entries, totals as paid (not halved); the shared `Flow` left without history                                                                         | —          |
+| B2  | ~~Import this month's shared expenses once the app is live~~ | ✅ done 2026-11-09: November's Tricount (6 expenses) loaded by one-off SQL against production; Alquiler and its reimbursement deleted (settled outside the app); Flow + Cel entered through the second member's shared fixed concept; both members' `joined_on` moved to 2026-11-01 so earlier-dated expenses have participants | —          |

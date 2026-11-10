@@ -4,8 +4,47 @@ Household expenses for two (or more): each person's monthly fixed costs with a r
 plus a Tricount-style shared list that splits evenly and settles up. Android app built with
 React Native + Expo on Supabase. UI in Spanish.
 
-Design and reasoning: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Task board:
-[docs/TASKS.md](docs/TASKS.md).
+It replaces a personal Google Sheets budget and Tricount for a two-person household, and has been
+in daily use on two phones since November 2026.
+
+## What it does
+
+- **Fixed costs (`Fijos`)**: each person keeps a private list of monthly concepts (rent, car,
+  utilities, subscriptions…) and enters each month's amount. Unpaid months show as pending, and a
+  month total is shown in pesos and, with the month's **reference dollar**, as a USD estimate,
+  a common way to track costs in Argentina's inflationary economy. **Evolución** charts every
+  month's total.
+- **Shared expenses (`Compartidos`)**: a Tricount-style list for the household. Anyone adds an
+  expense, it is split equally among the members, and a running balance shows who owes whom.
+  **Saldar** (settle) records a transfer for all or part of the balance.
+- **Shared fixed costs**: a fixed concept marked as shared (one person pays electricity, the
+  other internet) automatically becomes a shared expense, and appears read-only on the other
+  member's fixed costs with their share.
+- **Income (`Ingresos`)**: each person's monthly income in pesos or dollars. It never leaves the
+  phone (encrypted local storage) and can be exported and imported as a file.
+- **Household**: sign in with Google, create a household and invite others with a code. Light
+  and dark theme.
+
+## Technical highlights
+
+- **React Native + Expo** (SDK 58, Expo Router, TypeScript strict), Android-first, built in the
+  cloud with **EAS Build** and updated **over the air** with EAS Update.
+- **Supabase** (Postgres, Auth, Row Level Security) as the whole backend: no server code. RLS
+  keeps each person's fixed costs private, and the business rules live in SQL, so the app never
+  repeats them: equal split by the members active on each expense's date, balances as a view,
+  and a trigger that turns shared fixed costs into shared expenses atomically.
+- Money as whole pesos in `bigint`; shares and balances computed as `numeric` and rounded only
+  for display, so rounding errors never accumulate.
+- **Native Google Sign-In** handing the ID token to Supabase; session in Android keystore-backed
+  secure storage.
+- Idempotent import of the original spreadsheet's history (`tools/excel-import.ts`, validated
+  with Zod).
+- CI on GitHub Actions: ESLint, Oxlint, Prettier and `tsc`, plus an RLS check run against a local
+  Supabase stack. The non-trivial logic has small runnable smoke checks (`tools/*-smoke.ts`).
+- Runs on free tiers only: **USD 0 per month**.
+
+Design and reasoning behind every decision: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Task
+board, with what departed from each plan: [docs/TASKS.md](docs/TASKS.md).
 
 ## Setup
 
