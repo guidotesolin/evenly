@@ -7,6 +7,13 @@ React Native + Expo on Supabase. UI in Spanish.
 It replaces a personal Google Sheets budget and Tricount for a two-person household, and has been
 in daily use on two phones since November 2026.
 
+<p>
+  <img src="docs/screenshots/sign-in.png" width="200" alt="Sign-in screen">
+  <img src="docs/screenshots/fixed.png" width="200" alt="Fixed costs for the month, with shared ones split and a USD estimate">
+  <img src="docs/screenshots/shared.png" width="200" alt="Shared expenses with the running balance and Settle up">
+  <img src="docs/screenshots/income.png" width="200" alt="Monthly income in pesos and dollars, stored only on the phone">
+</p>
+
 ## What it does
 
 - **Fixed costs (`Fijos`)**: each person keeps a private list of monthly concepts (rent, car,
