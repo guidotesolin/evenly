@@ -404,3 +404,7 @@ saldar una parte y el resto queda pendiente.` · field `Fecha` (`Hoy`)
 - EAS manages the Android `versionCode` (`appVersionSource: remote`, `autoIncrement` on the
   `preview` profile), so every APK gets a higher one without touching `app.json`; `version` stays
   the user-facing number and drives `runtimeVersion`.
+- Product versions are git tags, one minor per feature (`v1.0.0` closed T0–T9 and B1–B2; `v1.1.0`
+  is T10). They are not `app.json`'s `version`: that one changes only with a native change, since
+  bumping it changes `runtimeVersion` and the installed APKs stop receiving updates. So the menu's
+  `Versión 1.0.0 · {update id}` keeps `1.0.0` while JS-only features ship over the air.

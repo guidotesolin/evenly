@@ -12,6 +12,8 @@
 - Claude does not commit. It proposes the commit message and the ticket description; the
   maintainer reviews and runs it.
 - Code is written with ponytail and must pass anti-slop.
+- Each feature closes a product version, tagged by the maintainer: T10 is `v1.1.0` (ARCHITECTURE.md
+  § Distribution).
 
 ## Board
 
@@ -27,6 +29,7 @@
 | T7  | `t7-excel-import`   | T1         |
 | T8  | `t7-excel-import`   | T6         |
 | T9  | `t7-excel-import`   | T6         |
+| T10 | `t10-income`        | T8         |
 
 T1 and T3 can run in parallel; so can T4, T5 and T7.
 
@@ -370,7 +373,7 @@ reembolso?`): a wrong settle can be undone; editing one isn't in scope.
 
 ---
 
-### T6 — Shared fixed costs
+### T6 — Shared fixed costs ✅ done
 
 Connect both screens as specified in ARCHITECTURE.md `### Shared fixed costs`: in concept
 management, a "shared" toggle (with the note that it applies only from now on); shared rows show
@@ -432,7 +435,7 @@ definer`, returns only name and owner of the household's shared concepts still p
   doesn't touch its movement (the T1 trigger returns early), so that row shows the new total
   with the old share and Compartidos keeps the old amount. Re-ran `fixed:smoke`, lint, format and
   typecheck.
-- Not yet: phone acceptance on two phones.
+- Phone acceptance on two phones: confirmed by the maintainer on 2026-11-09, with both phones on the production build.
 
 ---
 
@@ -522,11 +525,32 @@ _Commit_: `feat(menu): add household, theme, unarchive and history screens`
 
 ---
 
+### T10 — Income history (v1.1.0)
+
+**To be specified before starting** (brainstorm the open questions, then complete this card).
+
+The "Ingresos" spreadsheet (Google Sheets, kept outside the repo like T7's) holds Guido's income
+from June 2025: one row per month with `Total ARS`, `Total USD`, and one or more rows of
+`Concepto`, `USD` and `Precio USD` (salary in dollars converted at that month's rate, extra
+payments, occasionally a peso-only income with no dollar amount).
+
+Open questions: what the app shows (an income screen, income against Fijos per month, savings);
+whether income is private (like `fixed_*`) or visible to the household; whether `Precio USD` is
+the same thing as `reference_rates` or a separate rate per income; one-time import (T7's script
+pattern) or also typed in the app.
+
+_Output_: to be defined
+_Acceptance_: to be defined
+_Commit_: to be defined
+
+---
+
 ## Backlog
 
 Things found while executing the board and deliberately left. Each one says why it was left and
 who it belongs to. Shortcuts inside code are `ponytail:` comments instead.
 
-| ID  | What                                    | Why it was left                                             | Belongs to                          |
-| --- | --------------------------------------- | ----------------------------------------------------------- | ----------------------------------- |
-| B1  | Import Sabrina's fixed-cost spreadsheet | ✅ done 2026-11-09: one sheet per month (June–November 2026), es-AR amounts, no `Valor dolar`, so not T7's script; a one-off SQL insert against production. 9 concepts, 53 entries, totals as paid (not halved); her shared `Flow` left without history | — |
+| ID  | What                                                         | Why it was left                                                                                                                                                                                                                                                                                                       | Belongs to |
+| --- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| B1  | ~~Import Sabrina's fixed-cost spreadsheet~~                  | ✅ done 2026-11-09: one sheet per month (June–November 2026), es-AR amounts, no `Valor dolar`, so not T7's script; a one-off SQL insert against production. 9 concepts, 53 entries, totals as paid (not halved); her shared `Flow` left without history                                                               | —          |
+| B2  | ~~Import this month's shared expenses once the app is live~~ | ✅ done 2026-11-09: November's Tricount (6 expenses) loaded by one-off SQL against production; Alquiler and its reimbursement deleted (settled outside the app); Flow + Cel entered through Sabrina's shared fixed concept; both members' `joined_on` moved to 2026-11-01 so earlier-dated expenses have participants | —          |
