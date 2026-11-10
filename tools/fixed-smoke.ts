@@ -87,6 +87,7 @@ const rows = monthRows(
       description: 'Luz',
       amount: 26000,
       my_share: 13000,
+      concept_emoji: null,
     },
     {
       fixed_entry_id: 'e-net',
@@ -94,21 +95,22 @@ const rows = monthRows(
       description: 'Internet',
       amount: 30000,
       my_share: 15000,
+      concept_emoji: '🛜',
     },
   ],
-  [{ concept_id: 'c-agua', name: 'Agua', owner_id: 'sabrina' }],
+  [{ concept_id: 'c-agua', name: 'Agua', owner_id: 'sabrina', emoji: '💧' }],
   'guido',
 );
 
 assert.deepEqual(
-  rows.map((row) => [row.name, row.share, row.paidBy]),
+  rows.map((row) => [row.name, row.emoji, row.share, row.paidBy]),
   [
-    ['Agua', null, 'sabrina'],
-    ['Auto', null, null],
-    ['Gas', null, null],
-    ['Internet', 15000, 'sabrina'],
-    ['Luz', 13000, null],
-    ['Seguro', null, null],
+    ['Agua', '💧', null, 'sabrina'],
+    ['Auto', '🚗', null, null],
+    ['Gas', null, null, null],
+    ['Internet', '🛜', 15000, 'sabrina'],
+    ['Luz', null, 13000, null],
+    ['Seguro', null, null, null],
   ],
 );
 

@@ -67,10 +67,12 @@ type DerivedMovement = {
   description: string;
   amount: number;
   my_share: number | null;
+  /** The emoji of the concept it comes from (`concept_emoji`). */
+  concept_emoji: string | null;
 };
 
 /** Another member's shared concept with no amount yet this month (`pending_shared_concepts`). */
-type PendingShared = { concept_id: string; name: string; owner_id: string };
+type PendingShared = { concept_id: string; name: string; owner_id: string; emoji: string | null };
 
 export type FixedRow = {
   /** Concept id; for read-only rows, the other member's entry id. */
@@ -109,7 +111,7 @@ export function monthRows(
       others.push({
         id: movement.fixed_entry_id,
         name: movement.description,
-        emoji: null,
+        emoji: movement.concept_emoji,
         isShared: true,
         amount: movement.amount,
         share: movement.my_share ?? 0,
@@ -122,7 +124,7 @@ export function monthRows(
     others.push({
       id: concept.concept_id,
       name: concept.name,
-      emoji: null,
+      emoji: concept.emoji,
       isShared: true,
       amount: null,
       share: null,

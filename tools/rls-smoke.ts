@@ -305,3 +305,45 @@ if (waterEntry.error) throw waterEntry.error;
 assert.deepEqual(await pendingNames(b.client), ['Luz']);
 
 console.log('ok 8 pending shared concepts stay inside the household');
+
+// (9) Another member's shared concept shows its emoji; the function reveals nothing outside the
+// household, even when called through /rpc with a movement id.
+const lit = await a.client.from('fixed_concepts').update({ emoji: '💡' }).eq('id', shared.data.id);
+
+if (lit.error) throw lit.error;
+
+const relit = await a.client
+  .from('fixed_entries')
+  .update({ amount: 26000 })
+  .eq('id', sharedEntry.data.id);
+
+if (relit.error) throw relit.error;
+
+const withEmoji = await b.client
+  .from('shared_movements')
+  .select('id, concept_emoji')
+  .eq('fixed_entry_id', sharedEntry.data.id)
+  .single();
+
+if (withEmoji.error) throw withEmoji.error;
+
+assert.equal(withEmoji.data.concept_emoji, '💡');
+
+const pendingEmoji = await b.client.rpc('pending_shared_concepts', { target_month: '2026-05-01' });
+
+if (pendingEmoji.error) throw pendingEmoji.error;
+
+assert.deepEqual(
+  pendingEmoji.data.map((row) => [row.name, row.emoji]),
+  [['Luz', '💡']],
+);
+
+// SAFETY: a hand-built row with only the id, as an attacker would send it; the function reads
+// nothing else from it.
+const leaked = await stranger.client.rpc('concept_emoji', {
+  movement: { id: withEmoji.data.id } as never,
+});
+
+assert.ok(leaked.error !== null || leaked.data === null, 'emoji leaked outside the household');
+
+console.log('ok 9 shared concept emoji reaches members only');
