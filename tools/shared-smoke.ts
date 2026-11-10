@@ -39,15 +39,18 @@ assert.deepEqual(
   ],
 );
 
-// Reimbursements count in neither total; an expense I didn't share adds to the total only.
+// "Mine" is what I paid; reimbursements count in neither total.
 assert.deepEqual(
-  monthTotals([
-    { kind: 'expense', amount: 20000, my_share: 10000 },
-    { kind: 'expense', amount: 900, my_share: 300 },
-    { kind: 'expense', amount: 500, my_share: 0 },
-    { kind: 'reimbursement', amount: 4000, my_share: 0 },
-  ]),
-  { mine: 10300, total: 21400 },
+  monthTotals(
+    [
+      { kind: 'expense', amount: 20000, paid_by: 'me' },
+      { kind: 'expense', amount: 900, paid_by: 'me' },
+      { kind: 'expense', amount: 500, paid_by: 'partner' },
+      { kind: 'reimbursement', amount: 4000, paid_by: 'me' },
+    ],
+    'me',
+  ),
+  { mine: 20900, total: 21400 },
 );
 
 // A pays 20.000: B owes A 10.000; seen from B, the balance is negative.

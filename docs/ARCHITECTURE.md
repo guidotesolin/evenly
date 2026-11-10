@@ -133,8 +133,10 @@ Per member, positive = the household owes them:
 
 The view uses `security_invoker = true` so it respects RLS.
 
-The Compartidos header's "my expenses" reads `my_share`, a PostgREST computed field on
-`shared_movements` (`select('*, my_share')`): the caller's share of an expense through
+The Compartidos header's "my expenses" is what the caller paid that month (expenses with
+`paid_by` = caller), next to the month's total; the balance card carries the split. The Fijos tab
+reads `my_share`, a PostgREST computed field on `shared_movements`
+(`select('*, my_share')`): the caller's share of an expense through
 `household_participants` / `participant_count`, 0 for reimbursements and for expenses the caller
 didn't take part in. The app never repeats the split rule.
 

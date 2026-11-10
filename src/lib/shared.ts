@@ -49,17 +49,17 @@ export function groupByDay<T extends Dated>(rows: T[]): { day: string; rows: T[]
   return groups;
 }
 
-type Movement = { kind: string; amount: number; my_share: number | null };
+type Movement = { kind: string; amount: number; paid_by: string };
 
-/** Header totals: "Mis gastos" (my shares) and "Gastos totales" (expenses only). */
-export function monthTotals(movements: Movement[]) {
+/** Header totals: "Mis gastos" (expenses I paid) and "Gastos totales" (expenses only). */
+export function monthTotals(movements: Movement[], me: string) {
   let mine = 0;
   let total = 0;
 
   for (const movement of movements) {
     if (movement.kind !== 'expense') continue;
 
-    mine += movement.my_share ?? 0;
+    if (movement.paid_by === me) mine += movement.amount;
     total += movement.amount;
   }
 

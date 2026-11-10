@@ -29,7 +29,6 @@ type Movement = {
   amount: number;
   occurred_on: string;
   fixed_entry_id: string | null;
-  my_share: number | null;
 };
 
 /** `key` is the month the movements belong to (`monthKey`); the balance is all-time. */
@@ -46,7 +45,7 @@ async function fetchScreen(householdId: string, me: string, month: Date): Promis
   const [movements, balances, members] = await Promise.all([
     supabase
       .from('shared_movements')
-      .select('id, kind, paid_by, description, amount, occurred_on, fixed_entry_id, my_share')
+      .select('id, kind, paid_by, description, amount, occurred_on, fixed_entry_id')
       .eq('household_id', householdId)
       .gte('occurred_on', key)
       .lt('occurred_on', monthKey(new Date(month.getFullYear(), month.getMonth() + 1, 1)))
@@ -162,7 +161,7 @@ export default function Shared() {
 
   // Until the new month arrives, the previous one stays on screen, dimmed and read-only.
   const stale = data?.key !== monthKey(month);
-  const totals = monthTotals(data?.movements ?? []);
+  const totals = monthTotals(data?.movements ?? [], me);
   const settle = data?.settle ?? null;
   const parsed = parseWholeNumber(text);
   const other = settle ? nameOf(settle.other) : '';
