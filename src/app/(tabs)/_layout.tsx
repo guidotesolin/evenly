@@ -2,9 +2,10 @@ import Constants from 'expo-constants';
 import { router, Tabs } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { useRef, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Switch, Text, View } from 'react-native';
 import { Button, IconButton, Row, Sheet } from '@/components/ui';
 import { signOut } from '@/lib/auth';
+import { setShowUsd, useShowUsd } from '@/lib/show-usd';
 import {
   loadTheme,
   radius,
@@ -26,6 +27,7 @@ function HeaderMenu() {
   const c = useColors();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeChoice>('system');
+  const showUsd = useShowUsd();
   // A tap before the stored choice finishes loading wins over it.
   const picked = useRef(false);
 
@@ -70,6 +72,19 @@ function HeaderMenu() {
               }}
             />
           ))}
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <Text style={[type.body, { flex: 1, color: c.text }]}>Mostrar dólares</Text>
+          <Switch
+            accessibilityLabel="Mostrar dólares"
+            value={showUsd}
+            trackColor={{ true: c.accent, false: c.line }}
+            thumbColor={c.surface}
+            onValueChange={(value) =>
+              setShowUsd(value).catch((error: Error) => Alert.alert('Error', error.message))
+            }
+          />
         </View>
 
         <View style={{ gap: space.sm }}>
@@ -171,6 +186,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="shared" options={{ title: 'Compartidos' }} />
+      <Tabs.Screen name="income" options={{ title: 'Ingresos' }} />
     </Tabs>
   );
 }

@@ -525,23 +525,60 @@ _Commit_: `feat(menu): add household, theme, unarchive and history screens`
 
 ---
 
-### T10 — Income history (v1.1.0)
+### T10 — Income (v1.1.0) ✅ done
 
-**To be specified before starting** (brainstorm the open questions, then complete this card).
+A third tab, **Ingresos**, replacing the "Ingresos" spreadsheet (Google Sheets, outside the repo:
+one row per month with `Total ARS`, `Total USD`, and rows of `Concepto`, `USD`, `Precio USD`).
+Decided with the maintainer (2026-11-09):
 
-The "Ingresos" spreadsheet (Google Sheets, kept outside the repo like T7's) holds Guido's income
-from June 2025: one row per month with `Total ARS`, `Total USD`, and one or more rows of
-`Concepto`, `USD` and `Precio USD` (salary in dollars converted at that month's rate, extra
-payments, occasionally a peso-only income with no dollar amount).
+- **Local only**: incomes never reach Supabase; they live in `expo-secure-store` on the phone
+  (ARCHITECTURE.md § Income). Private by construction, lost on uninstall unless exported.
+- One income = concept, whole amount, currency (`ARS` | `USD`), per month. Dollars convert with
+  the month's reference rate from Fijos, not the sheet's per-row `Precio USD`.
+- `ARS | USD` display switch as in Fijos. Menu switch **Mostrar dólares** (per phone, default on)
+  hides every dollar figure in the app.
+- **Importar** picks a file on the phone (an export, or the sheet's rows saved as text);
+  **Exportar** writes `ingresos.txt` and shares it, to move to another phone. Native modules
+  (`expo-file-system`, `expo-sharing`), so T10 ships as a new APK, `version` 1.1.0.
 
-Open questions: what the app shows (an income screen, income against Fijos per month, savings);
-whether income is private (like `fixed_*`) or visible to the household; whether `Precio USD` is
-the same thing as `reference_rates` or a separate rate per income; one-time import (T7's script
-pattern) or also typed in the app.
+_Output_: `src/app/(tabs)/income.tsx`, `src/lib/income.ts` (+ `tools/income-smoke.ts`,
+`npm run income:smoke`), `src/lib/show-usd.ts`, `CurrencySwitch`, `RateCard` and `TotalFooter`
+in `ui.tsx`, USD hidden in Fijos and Evolución when switched off, `app.json` `version` 1.1.0;
+`app.config.ts` gives the dev build its own package (`ar.tesolin.evenly.dev`)
+_Acceptance_: incomes in ARS and USD per month survive an app restart; the total adds dollars at
+the month's rate and shows them apart (`sin convertir`) without one; importing the sheet's file
+twice leaves no duplicates; Exportar → Importar round-trips; with Mostrar dólares off no USD appears in
+Fijos, Evolución or Ingresos; `income:smoke`, lint, format check and typecheck pass
+_Commit_: `feat(income): add local income tab`
 
-_Output_: to be defined
-_Acceptance_: to be defined
-_Commit_: to be defined
+#### Where it departed from the plan
+
+- `Importar` / `Exportar` sit under the list, next to the local-storage notice, instead of in the
+  header: two text buttons plus the menu didn't fit beside the title.
+- Adding an income is a plain button under the list, not a floating one: the footer total already
+  takes the bottom.
+- The currency is a `En dólares` switch in the sheet (like `Compartido`), not an `ARS | USD`
+  segment.
+- Import by pasting text was replaced, after trying it on the phone, by picking a file: a pasted
+  "Filas" field wasn't understandable. That brought native modules and the `version` bump.
+- The rate card shows only once the month has incomes (on an empty month it read as a field to
+  fill).
+- The dev build got its own package so it installs next to the production APK (ARCHITECTURE.md
+  § Distribution).
+- Review fixes: a write guard against double taps, no alert when the rate can't be read offline,
+  and the rate card and total footer moved to `ui.tsx` (`RateCard`, `TotalFooter`), shared with
+  Fijos.
+
+#### Verified on delivery
+
+- `npm run income:smoke` (made-up amounts in the sheet's real shape: merged months, a peso-only
+  row, US separators, `$ -`, a BOM, a CSV refused, a tab inside a concept, stored-item checks,
+  a peso row inside a merged month failing, bad cells, export
+  round-trip, totals with and without a rate), `npm run
+fixed:smoke`, `npm run lint`, `npm run format:check`, `npm run typecheck`: pass.
+  `npx expo export --platform android` bundles.
+- On the Redmi (Evenly Dev, rebuilt with the new native modules): the maintainer confirmed the
+  acceptance on 2026-11-10, importing the real sheet as `ingresos.txt` (20 incomes).
 
 ---
 
