@@ -17,12 +17,13 @@ the author and Ana live together and share household costs. Today that takes two
    at the end of each month; **big ones (rent) are settled right away**.
 
 Goal of v1: one Android app for both of them that replaces the spreadsheet and Tricount, starting
-November 2026. Two screens only:
+November 2026. Two screens in v1, a third (Ingresos) in v1.1:
 
 - **Fixed** (`Fijos`): private per person. Each user has their own list of fixed concepts and
   enters each month's amount, plus their own reference dollar.
 - **Shared** (`Compartidos`): shared by the household. A Tricount-style list of expenses and
   reimbursements with a running balance and a "settle" action.
+- **Income** (`Ingresos`, v1.1): each person's monthly income, kept only on their phone.
 
 Secondary goal: the repo is **public on GitHub** as a mobile portfolio piece for the author's CV. That
 is why the stack is React Native rather than a PWA.
@@ -43,8 +44,8 @@ is why the stack is React Native rather than a PWA.
 | Conversation with Claude                                                                     | Spanish (voseo)  | Maintainer's language                                                                    |
 | **Product UI**                                                                               | **Spanish only** | Only two users, both Argentinian. Strings are written inline in Spanish, no i18n library |
 
-Product names map to code names: `Fijos` → `fixed`, `Compartidos` → `shared`, `Saldar` →
-`settle`, `Reembolso` → `reimbursement`, `grupo familiar` → `household`, `dólar de referencia` →
+Product names map to code names: `Fijos` → `fixed`, `Compartidos` → `shared`, `Ingresos` →
+`income`, `Saldar` → `settle`, `Reembolso` → `reimbursement`, `grupo familiar` → `household`, `dólar de referencia` →
 `reference rate`.
 
 ## Stack
@@ -63,9 +64,10 @@ Product names map to code names: `Fijos` → `fixed`, `Compartidos` → `shared`
 | CI            | GitHub Actions                                                                                  | Free for public repos                                                                                                                  |
 | License       | MIT                                                                                             | Public portfolio repo                                                                                                                  |
 
-Anti-slop adjustment: `no-runtime-typeof` runs with `allowInTypeGuards`. The only external data
-parsed at a boundary is the spreadsheet import (T7), which uses Zod; the app talks to Supabase
-through generated types.
+Anti-slop adjustment: `no-runtime-typeof` runs with `allowInTypeGuards`. External data is parsed
+at two boundaries: the spreadsheet import (T7, a Node script) with Zod, and Ingresos' Importar
+file (`parseIncomeSheet`, in the app, hand-written since Zod is only a dev dependency) plus the
+stored incomes (`isIncome`). The app talks to Supabase through generated types.
 
 ## Cost
 
@@ -178,6 +180,37 @@ month + 1 month − 1 day))`), so the movement always falls in the entry's month
   household (`20261111000000_shared_concept_emoji.sql`, `rls:smoke` case 9). Known ceiling: there is no record of when a concept became
   shared, so one shared today also shows as pending in past months.
 
+### Income (local only)
+
+Incomes never reach Supabase: they are the most private figure in the app and only their owner
+looks at them. They live in `expo-secure-store` under one key (`incomes`), a JSON array of
+`{ id, month, concept, amount, currency }`, amounts in whole units of `ARS` or `USD`. Chosen over
+AsyncStorage or SQLite because it was already installed and is encrypted. Known ceiling:
+uninstalling or changing phones loses them, so the screen says so and offers **Exportar**: the
+list written to `ingresos.txt` (tab-separated, the format **Importar** reads) in the cache and
+handed to Android's share sheet (`expo-file-system` + `expo-sharing`), to keep in Drive or a chat.
+**Importar** opens the system file picker (`File.pickFileAsync`) and reads that file back;
+it must be tab-separated (a CSV is refused saying so) and a leading BOM is ignored. Exportar turns a
+tab or line break inside a concept into a space, so the file always reads back. Every stored item
+is checked (`isIncome`); one bad item makes the list unreadable rather than dropped. A stored value that doesn't parse is an error, never an empty
+list, so a save can't overwrite it.
+
+- Dollars convert with the user's `reference_rates` row for the month, the only thing the screen
+  reads from the server; the sheet's per-row `Precio USD` is dropped. A failed read (offline) raises no
+  alert and counts as no rate; rows and total wait for that read to settle, so dollars don't
+  flash as unconverted. On a month with no incomes no dollar figure is shown. Without a rate the dollars
+  are shown apart (`+ US$ x sin convertir`), not added as zero.
+- Importar reads the spreadsheet's rows saved as text (`Mes`, `Total ARS`, `Total USD`, `Concepto`, `USD`,
+  `Precio USD`, US separators); an empty `Mes` repeats the previous one (merged cells); a row with
+  `USD` is a dollar income, otherwise `Total ARS` is a peso one, accepted only when the month has
+  no other row (in a merged month `Total ARS` is the whole month's total, so that row fails and is
+  typed by hand); `$ -` is an empty cell, as in T7. It replaces the incomes of the
+  months it contains, so importing the same text twice changes nothing. `parseIncomeSheet` /
+  `formatIncomeSheet` in `src/lib/income.ts`, checked by `npm run income:smoke`.
+- **Mostrar dólares** (menu, `src/lib/show-usd.ts`): a per-phone preference in SecureStore, on by
+  default. Off hides every dollar figure: Fijos' rate card and `≈ US$` line, Evolución's USD,
+  Ingresos' rate card and the `En dólares` switch (an income already in dollars keeps it).
+
 ### Row Level Security
 
 - `fixed_concepts`, `fixed_entries`, `reference_rates`: only the owner can select/insert/update/
@@ -193,7 +226,7 @@ month + 1 month − 1 day))`), so the movement always falls in the entry's month
 
 ## Screens
 
-Two tabs (`expo-router` tabs), plus sign-in and household setup outside the tabs.
+Three tabs (`expo-router` tabs), plus sign-in and household setup outside the tabs.
 
 1. **Sign in**: one "Continue with Google" button.
 2. **Household setup** (only while the user has no household): create one (shows the invite code
@@ -213,9 +246,15 @@ Two tabs (`expo-router` tabs), plus sign-in and household setup outside the tabs
    X" or "transferred by X", and amount; floating "add expense" button; "Settle" action. Add/edit
    form: description, amount, date (default today), paid by (default me). Any member can edit or
    delete any manual movement; derived ones link to the fixed screen instead.
-5. **Menu** (`⋮` in both tabs, a bottom sheet): **Grupo familiar** (a screen with the household
+5. **Ingresos** (`Ingresos`): month selector; read-only rate card with the `ARS | USD` switch, only once
+   the month has incomes;
+   one row per income (sorted by concept), dollar incomes showing the dollars under the converted
+   amount; `Agregar ingreso`; the local-storage notice with `Importar` and `Exportar`; footer with
+   the month total. Tapping a row edits or deletes it. See § Income.
+6. **Menu** (`⋮` in every tab, a bottom sheet): **Grupo familiar** (a screen with the household
    name, its active members and the invite code, shared through Android's share sheet),
-   **Evolución de fijos** (kept out of the Fijos header, which had no room for a second action), **Tema**
+   **Evolución de fijos** (kept out of the Fijos header, which had no room for a second action),
+   **Mostrar dólares** (switch), **Tema**
    (Sistema / Claro / Oscuro), **Cerrar sesión**, and the app version.
 
 ## Design and UI copy
@@ -235,7 +274,7 @@ applied at startup.
   `type` scale, and `useNavigationTheme()` for headers and tab bar. Every colour pair passes 4.5:1.
 - **Base components**: `src/components/ui.tsx` — `Screen`, `Card`, `Money`, `Row`, `Button`
   (`primary` | `secondary` | `text` | `danger`), `Input` (labelled), `MonthSelector`, `Sheet`
-  (bottom sheet with title and subtitle), `IconButton` (48 dp glyph button with a label),
+  (bottom sheet with title and subtitle), `RateCard` and `TotalFooter` (Fijos and Ingresos), `IconButton` (48 dp glyph button with a label),
   `DaySelector` (the `Fecha` field: opens Android's calendar dialog,
   `@react-native-community/datetimepicker`, never past today). `Row` takes an optional `badge` (`Fijo`). Screens compose these; they do not style raw
   primitives.
@@ -273,8 +312,8 @@ selector shows `Noviembre 2026` (capitalized, as a title).
 
 **Tabs and menu**
 
-- Tabs: `Fijos`, `Compartidos`
-- Menu (`⋮`, accessibility label `Menú`): sheet title `Evenly` · `Grupo familiar` · `Evolución de fijos` · `Tema` with
+- Tabs: `Fijos`, `Compartidos`, `Ingresos`
+- Menu (`⋮`, accessibility label `Menú`): sheet title `Evenly` · `Grupo familiar` · `Evolución de fijos` · switch `Mostrar dólares` · `Tema` with
   `Sistema`, `Claro`, `Oscuro` · button `Cerrar sesión` · `Versión {version}` (plus ` · {update id, 8 chars}` when running an OTA update); error
   `No se pudo cerrar sesión`
 - Month selector accessibility labels: `Mes anterior`, `Mes siguiente`
@@ -312,6 +351,28 @@ aparece en Compartidos. Cambiarlo afecta solo los montos que cargues desde ahora
 - Archive confirm: `¿Archivar {name}?` · `Deja de aparecer en los meses nuevos. Los montos
 cargados se conservan.` · `Archivar`, `Cancelar`
 - Archived section: `Archivados` · button `Desarchivar`
+
+**Ingresos**
+
+- Rate card: `Dólar de referencia` · `{$ rate}`, or `Cargalo en Fijos para convertir los
+dólares.` · switch `ARS` · `USD` (same as Fijos)
+- Row: `{concept}` · `{$ amount}`; a dollar income adds `US$ {amount}` as detail (when converted)
+- Button `Agregar ingreso`
+- Notice: `Se guarda solo en este teléfono. No se sube a la nube ni lo ve tu grupo familiar. Usá
+Exportar antes de cambiar de celular.`, plus ` Si desinstalás la app o cambiás de celular, se
+pierde.` in a month with no incomes
+- Buttons `Importar`, `Exportar`
+- Footer: `Total del mes` · `{$ total}` · `≈ {US$ total}` (or the pesos in USD view) ·
+  `+ {US$ x} sin convertir` when the month has dollars and no rate
+- Income sheet: `Nuevo ingreso` / `Editar ingreso` · `{month}` · fields `Concepto` (placeholder
+  `Ej.: Sueldo`), `Monto` · switch `En dólares` · buttons `Eliminar`, `Guardar` · confirm
+  `¿Eliminar este ingreso?` · `Eliminar`, `Cancelar`
+- Importar opens the file picker, then confirms `Importar` · `Se importan {n} ingresos de {m}
+meses. Reemplaza los de esos meses. Quedan solo en este teléfono.` · `Importar`, `Cancelar`;
+  errors `No se pudo importar` · `Línea {n}: {reason}`, `El archivo no tiene ingresos.` or `El archivo no tiene columnas
+separadas por tabulaciones: usá uno exportado desde Evenly o la planilla descargada como .tsv.`
+- Exportar opens the share sheet titled `Exportar ingresos` with `ingresos.txt`; error
+  `No se pudo exportar`
 
 **Compartidos**
 
@@ -397,14 +458,22 @@ saldar una parte y el resto queda pendiente.` · field `Fecha` (`Hoy`)
 - The preview build and its updates read `EXPO_PUBLIC_*` from EAS's `preview` environment (plain
   text: they ship inside the APK anyway), pointing at the hosted Supabase project; `.env` stays
   local and is never uploaded (gitignored files are left out of the EAS build archive).
-- Google Sign-In needs the APK's signing SHA-1 registered in Google Cloud. An Android OAuth client
-  holds one fingerprint, so there are two with the same package: one with the debug keystore's
-  SHA-1 (dev build) and one with the EAS-managed keystore's (expo.dev → Credentials → Android).
-  Never replace the first: the dev build would stop signing in.
+- The dev build is its own app: `app.config.ts` gives it the package `ar.tesolin.evenly.dev` and
+  the name `Evenly Dev` when `APP_VARIANT=development` (`npm start` and `npm run android` set it),
+  so it installs next to the production APK instead of replacing it; app.json and the EAS builds
+  stay `ar.tesolin.evenly`. The two keep separate local data (session, theme, Ingresos).
+- Google Sign-In needs each app's package and signing SHA-1 registered in Google Cloud, one Android
+  OAuth client per pair: `ar.tesolin.evenly` with the EAS-managed keystore's SHA-1 (expo.dev →
+  Credentials → Android), and `ar.tesolin.evenly.dev` with the debug keystore's
+  (`android/app/debug.keystore`, the template's, so it survives `prebuild --clean`): the
+  `Evenly Android dev` client, whose package moved from `ar.tesolin.evenly` to the dev one when the
+  dev build got its own.
 - EAS manages the Android `versionCode` (`appVersionSource: remote`, `autoIncrement` on the
   `preview` profile), so every APK gets a higher one without touching `app.json`; `version` stays
   the user-facing number and drives `runtimeVersion`.
 - Product versions are git tags, one minor per feature (`v1.0.0` closed T0–T9 and B1–B2; `v1.1.0`
   is T10). They are not `app.json`'s `version`: that one changes only with a native change, since
   bumping it changes `runtimeVersion` and the installed APKs stop receiving updates. So the menu's
-  `Versión 1.0.0 · {update id}` keeps `1.0.0` while JS-only features ship over the air.
+  `Versión 1.0.0 · {update id}` kept `1.0.0` while JS-only features shipped over the air. T10
+  added native modules (`expo-file-system`, `expo-sharing`), so `version` became `1.1.0`: a new
+  APK for both phones, and updates published from then on reach only 1.1.0 APKs.

@@ -9,9 +9,11 @@
     "expo": "~58.0.23",
     "expo-constants": "~58.0.15",
     "expo-dev-client": "~58.0.18",
+    "expo-file-system": "~58.0.13",
     "expo-linking": "~58.0.16",
     "expo-router": "~58.0.30",
     "expo-secure-store": "~58.0.2",
+    "expo-sharing": "~58.0.22",
     "expo-splash-screen": "~58.0.13",
     "expo-status-bar": "~58.0.4",
     "expo-system-ui": "~58.0.7",
@@ -38,8 +40,8 @@
     "zod": "^4.6.7"
   },
   "scripts": {
-    "start": "expo start --dev-client",
-    "android": "expo run:android",
+    "start": "APP_VARIANT=development expo start --dev-client",
+    "android": "APP_VARIANT=development expo run:android",
     "lint": "eslint . && oxlint",
     "typecheck": "tsc --noEmit",
     "format:check": "prettier --check .",
@@ -49,7 +51,8 @@
     "fixed:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/fixed-smoke.ts",
     "shared:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/shared-smoke.ts",
     "import": "node --env-file=.env --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/excel-import.ts",
-    "import:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/import-smoke.ts"
+    "import:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/import-smoke.ts",
+    "income:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/income-smoke.ts"
   },
   "private": true
 }

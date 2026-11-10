@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { monthKey, monthLabel, monthlyTotals } from '@/lib/fixed';
 import { formatArs, formatUsd } from '@/lib/money';
 import { parseDay } from '@/lib/shared';
+import { useShowUsd } from '@/lib/show-usd';
 import { supabase } from '@/lib/supabase';
 import { radius, space, type, useColors } from '@/theme';
 
@@ -42,6 +43,7 @@ async function fetchTotals(me: string): Promise<MonthTotal[]> {
 export default function History() {
   const c = useColors();
   const { session } = useAuth();
+  const showUsd = useShowUsd();
   const [months, setMonths] = useState<MonthTotal[] | null>(null);
   const me = session?.user.id;
 
@@ -66,7 +68,7 @@ export default function History() {
           ) : (
             <View style={{ borderRadius: radius.field, overflow: 'hidden' }}>
               {months.map((row) => {
-                const usd = formatUsd(row.total, row.rate);
+                const usd = showUsd ? formatUsd(row.total, row.rate) : null;
                 // The current month still has pending amounts: say so and grey its bar, so it
                 // doesn't read as a drop.
                 const inProgress = row.month >= current;

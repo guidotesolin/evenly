@@ -21,3 +21,14 @@ export function formatUsd(amountArs: number, arsPerUsd: number | null): string |
 
   return `≈ ${usd.format(amountArs / arsPerUsd)}`;
 }
+
+const dollars = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+
+/** An amount that is in dollars (an income paid in USD, whole dollars): exact, so no `≈`. */
+export function formatDollars(amountUsd: number): string {
+  return dollars.format(amountUsd);
+}

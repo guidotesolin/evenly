@@ -39,6 +39,11 @@ is installed, scans staged content for secrets.
 The app uses native modules, so it runs in a **development build** installed on the phone, not in
 Expo Go. The build holds the native code; the JavaScript comes live from Metro on this machine.
 
+The dev build is a separate app, **Evenly Dev** (`ar.tesolin.evenly.dev`), so it installs next to
+the production APK. `npm start` and `npm run android` select it through `APP_VARIANT=development`;
+after changing the variant or anything in `app.config.ts`, regenerate the native project once with
+`APP_VARIANT=development npx expo prebuild --clean --platform android` before `npm run android`.
+
 ### Connecting the phone (wireless debugging)
 
 Works on Android 11+ with the phone and the machine on the same network; no USB cable needed.

@@ -489,3 +489,169 @@ export function Sheet({ visible, onClose, title, subtitle, children }: SheetProp
     </Modal>
   );
 }
+
+/** `ARS | USD` display switch in the rate card (Fijos, Ingresos). */
+export function CurrencySwitch({
+  usd,
+  disabled,
+  onChange,
+}: {
+  usd: boolean;
+  disabled: boolean;
+  onChange: (usd: boolean) => void;
+}) {
+  const c = useColors();
+
+  return (
+    <View style={{ flexDirection: 'row', marginRight: space.md, gap: 2 }}>
+      {[
+        { value: false, glyph: 'ARS', label: 'Ver en pesos' },
+        { value: true, glyph: 'USD', label: 'Ver en dólares' },
+      ].map((option) => {
+        const selected = option.value === usd;
+
+        return (
+          <Pressable
+            key={option.glyph}
+            accessibilityRole="button"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected, disabled }}
+            disabled={disabled}
+            onPress={() => onChange(option.value)}
+            style={{
+              minWidth: 48,
+              minHeight: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: space.sm,
+              borderRadius: radius.pill,
+              backgroundColor: selected ? c.accent : 'transparent',
+            }}
+          >
+            <Text style={[type.label, { color: selected ? c.onAccent : c.accent }]}>
+              {option.glyph}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+type RateCardProps = {
+  rate: number | null;
+  usd: boolean;
+  onUsdChange: (usd: boolean) => void;
+  disabled?: boolean;
+  /** Fijos edits the rate from here; Ingresos only shows it, with `hint` while there is none. */
+  onPress?: () => void;
+  hint?: string;
+};
+
+/** `Dólar de referencia` card with the `ARS | USD` switch (Fijos, Ingresos). */
+export function RateCard({
+  rate,
+  usd,
+  onUsdChange,
+  disabled = false,
+  onPress,
+  hint,
+}: RateCardProps) {
+  const c = useColors();
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: radius.field,
+        backgroundColor: c.accentSoft,
+        overflow: 'hidden',
+      }}
+    >
+      <Pressable
+        accessibilityRole={onPress ? 'button' : undefined}
+        disabled={disabled || !onPress}
+        android_ripple={{ color: c.line }}
+        onPress={onPress}
+        style={{
+          flex: 1,
+          minHeight: 56,
+          justifyContent: 'center',
+          gap: 2,
+          paddingVertical: space.sm,
+          paddingHorizontal: space.lg,
+        }}
+      >
+        {rate === null && onPress ? (
+          <Text style={[type.label, { color: c.accent }]}>Dólar de referencia</Text>
+        ) : (
+          <>
+            <Text style={[type.caption, { color: c.muted }]}>Dólar de referencia</Text>
+            {rate === null ? (
+              <Text style={[type.label, { color: c.muted, fontWeight: '400' }]}>{hint}</Text>
+            ) : (
+              <Money amount={rate} style={{ fontWeight: '500' }} />
+            )}
+          </>
+        )}
+      </Pressable>
+      {rate !== null && <CurrencySwitch usd={usd} disabled={disabled} onChange={onUsdChange} />}
+    </View>
+  );
+}
+
+type TotalFooterProps = {
+  total: number;
+  /** The month's rate; `null` without one or with dollars hidden, and then there is no USD line. */
+  rate: number | null;
+  /** The `ARS | USD` switch: the big amount in dollars and the pesos under it. */
+  usd: boolean;
+  dimmed?: boolean;
+  /** Under `Total del mes` (Fijos' pending count). */
+  badge?: ReactNode;
+  /** Extra lines under the amount (Ingresos' unconverted dollars). */
+  children?: ReactNode;
+};
+
+/** `Total del mes` bar at the bottom of Fijos and Ingresos. */
+export function TotalFooter({
+  total,
+  rate,
+  usd,
+  dimmed = false,
+  badge,
+  children,
+}: TotalFooterProps) {
+  const c = useColors();
+  const usdRate = usd ? rate : null;
+  const muted = [type.label, { color: c.muted, fontWeight: '400' as const }];
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: space.md,
+        paddingVertical: space.md,
+        paddingHorizontal: space.lg,
+        borderTopWidth: 1,
+        borderTopColor: c.line,
+        backgroundColor: c.surface,
+        opacity: dimmed ? 0.5 : 1,
+      }}
+    >
+      <View style={{ flex: 1, gap: space.xs, alignItems: 'flex-start' }}>
+        <Text style={[type.caption, { color: c.muted }]}>Total del mes</Text>
+        {badge}
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Money amount={total} usdRate={usdRate} style={type.total} />
+        {rate ? (
+          <Text style={muted}>{usdRate ? formatArs(total) : formatUsd(total, rate)}</Text>
+        ) : null}
+        {children}
+      </View>
+    </View>
+  );
+}
